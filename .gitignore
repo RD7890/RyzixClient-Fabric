@@ -37,3 +37,8 @@ replay_*.log
 node_modules/
 Release/
 monitor.js
+
+# Ignore local builds and secrets
+/Release/
+.env
+monitor.js
