@@ -22,7 +22,7 @@ public abstract class MenuScreensMixin extends Screen {
     private void onInitAddRyzixButton(CallbackInfo ci) {
         // Add button in the top left corner to avoid overlapping with default buttons
         this.addButton(new ButtonWidget(5, 5, 100, 20, new LiteralText("Ryzix Menu"), b -> {
-            MinecraftClient.getInstance().openScreen(new ModMenuScreen(this));
+            MinecraftClient.getInstance().openScreen(new ModMenuScreen(this, true));
         }));
     }
 }
