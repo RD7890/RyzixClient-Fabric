@@ -9,7 +9,10 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
-import net.minecraft.util.math.ChunkPos;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.minecraft.world.chunk.WorldChunk;
 
 public class OreESP {
@@ -22,10 +25,42 @@ public class OreESP {
     public static boolean showLapis   = true;
     public static boolean showDiamond = true;
 
+    // Scan config: 1 chunk (player's), once every 3s
+    private static final long SCAN_INTERVAL_MS = 3000L;
+    private static final int SCAN_MAX_Y = 64;
+
+    private enum OreType {
+        IRON(0.75f, 0.75f, 0.75f),    // light grey
+        GOLD(1.0f, 0.85f, 0.0f),      // yellow
+        LAPIS(0.1f, 0.3f, 0.9f),      // blue
+        DIAMOND(0.0f, 0.9f, 0.9f);    // cyan
+
+        final float r, g, b;
+        OreType(float r, float g, float b) { this.r = r; this.g = g; this.b = b; }
+    }
+
+    private static class CachedOre {
+        final BlockPos pos;
+        final OreType type;
+        final Box box;
+        CachedOre(BlockPos pos, OreType type) {
+            this.pos = pos;
+            this.type = type;
+            this.box = new Box(pos);
+        }
+    }
+
+    private static volatile CopyOnWriteArrayList<CachedOre> cache = new CopyOnWriteArrayList<>();
+    private static volatile long lastScanTime = 0L;
+    private static volatile ClientWorld cacheWorld = null;
+    private static final AtomicBoolean scanning = new AtomicBoolean(false);
+
     public static boolean isEnabled() { return enabled; }
 
     public static void toggle() {
         enabled = !enabled;
+        cache = new CopyOnWriteArrayList<>();
+        lastScanTime = 0L;
         RyzixClient.log("OreESP " + (enabled ? "enabled" : "disabled"));
     }
 
@@ -36,57 +71,79 @@ public class OreESP {
         ClientWorld world = mc.world;
         if (world == null || mc.player == null) return;
 
-        BlockPos playerPos = mc.player.getBlockPos();
-        int chunkRadius = 4; // Scan 4 chunks around player — balanced performance
+        // World changed (rejoin / dimension) -> drop stale cache
+        if (world != cacheWorld) {
+            cacheWorld = world;
+            cache = new CopyOnWriteArrayList<>();
+            lastScanTime = 0L;
+        }
 
-        int pcx = playerPos.getX() >> 4;
-        int pcz = playerPos.getZ() >> 4;
+        // Timed scan: only the chunk the player stands in, every 3s, off the render thread
+        long now = System.currentTimeMillis();
+        if (now - lastScanTime >= SCAN_INTERVAL_MS && scanning.compareAndSet(false, true)) {
+            lastScanTime = now;
+            BlockPos playerPos = mc.player.getBlockPos();
+            WorldChunk chunk = world.getChunk(playerPos.getX() >> 4, playerPos.getZ() >> 4);
+            if (chunk == null || chunk.isEmpty()) {
+                scanning.set(false);
+            } else {
+                startScan(world, chunk);
+            }
+        }
 
-        for (int cx = pcx - chunkRadius; cx <= pcx + chunkRadius; cx++) {
-            for (int cz = pcz - chunkRadius; cz <= pcz + chunkRadius; cz++) {
-                WorldChunk chunk = world.getChunk(cx, cz);
-                if (chunk == null || chunk.isEmpty()) continue;
+        // Render only cached ores; toggles are checked live so turning one off hides it instantly
+        for (CachedOre ore : cache) {
+            OreType t = ore.type;
+            if (t == OreType.IRON && !showIron) continue;
+            if (t == OreType.GOLD && !showGold) continue;
+            if (t == OreType.LAPIS && !showLapis) continue;
+            if (t == OreType.DIAMOND && !showDiamond) continue;
+            RenderUtils.drawBox(matrices, ore.box, t.r, t.g, t.b, 0.85f);
+        }
+    }
 
-                ChunkPos chunkPos = chunk.getPos();
-                int startX = chunkPos.getStartX();
-                int startZ = chunkPos.getStartZ();
+    private static void startScan(final ClientWorld world, final WorldChunk chunk) {
+        Thread t = new Thread(() -> {
+            try {
+                List<CachedOre> found = scanChunk(chunk);
+                // Publish only if the world is still the same one we scanned
+                if (world == cacheWorld) {
+                    cache = new CopyOnWriteArrayList<>(found);
+                }
+            } catch (Exception ignored) {
+                // Chunk data can be mutated by the network thread mid-read; retry next cycle
+            } finally {
+                scanning.set(false);
+            }
+        }, "RyzixClient-OreESP-Scan");
+        t.setDaemon(true);
+        t.start();
+    }
 
-                // Scan only below y=64 where ores generate
-                for (int x = startX; x < startX + 16; x++) {
-                    for (int z = startZ; z < startZ + 16; z++) {
-                        for (int y = 0; y < 64; y++) {
-                            BlockPos pos = new BlockPos(x, y, z);
-                            Block block = world.getBlockState(pos).getBlock();
+    private static List<CachedOre> scanChunk(WorldChunk chunk) {
+        List<CachedOre> found = new ArrayList<>();
+        int startX = chunk.getPos().getStartX();
+        int startZ = chunk.getPos().getStartZ();
+        BlockPos.Mutable m = new BlockPos.Mutable();
 
-                            float r = 0, g = 0, b = 0;
-                            boolean render = false;
-
-                            if (showIron && block == Blocks.IRON_ORE) {
-                                // Iron — light grey / white
-                                r = 0.75f; g = 0.75f; b = 0.75f;
-                                render = true;
-                            } else if (showGold && block == Blocks.GOLD_ORE) {
-                                // Gold — yellow
-                                r = 1.0f; g = 0.85f; b = 0.0f;
-                                render = true;
-                            } else if (showLapis && block == Blocks.LAPIS_ORE) {
-                                // Lapis — blue
-                                r = 0.1f; g = 0.3f; b = 0.9f;
-                                render = true;
-                            } else if (showDiamond && block == Blocks.DIAMOND_ORE) {
-                                // Diamond — cyan
-                                r = 0.0f; g = 0.9f; b = 0.9f;
-                                render = true;
-                            }
-
-                            if (render) {
-                                Box box = new Box(pos);
-                                RenderUtils.drawBox(matrices, box, r, g, b, 0.85f);
-                            }
-                        }
-                    }
+        // Only below y=64 where these ores generate
+        for (int x = startX; x < startX + 16; x++) {
+            for (int z = startZ; z < startZ + 16; z++) {
+                for (int y = 0; y < SCAN_MAX_Y; y++) {
+                    m.set(x, y, z);
+                    OreType type = typeOf(chunk.getBlockState(m).getBlock());
+                    if (type != null) found.add(new CachedOre(m.toImmutable(), type));
                 }
             }
         }
+        return found;
+    }
+
+    private static OreType typeOf(Block block) {
+        if (block == Blocks.IRON_ORE)    return OreType.IRON;
+        if (block == Blocks.GOLD_ORE)    return OreType.GOLD;
+        if (block == Blocks.LAPIS_ORE)   return OreType.LAPIS;
+        if (block == Blocks.DIAMOND_ORE) return OreType.DIAMOND;
+        return null;
     }
 }
