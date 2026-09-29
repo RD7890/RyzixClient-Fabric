@@ -44,6 +44,7 @@ public class ModMenuScreen extends Screen {
     private final List<Module> modules = new ArrayList<>();
     private int panelX, panelY;
     private int hoveredIdx = -1;
+    private float scale = 1.0f; // Stores our calculated scale
 
     public ModMenuScreen() {
         super(new LiteralText("RyzixClient"));
@@ -55,8 +56,18 @@ public class ModMenuScreen extends Screen {
 
     @Override
     protected void init() {
-        panelX = (this.width  - PANEL_W) / 2;
-        panelY = (this.height - PANEL_H) / 2;
+        // Calculate safe scale so menu never goes off-screen
+        float scaleY = (float) this.height / (PANEL_H + 20);
+        float scaleX = (float) this.width / (PANEL_W + 20);
+        // We only scale DOWN if it's too big, we don't scale UP.
+        scale = Math.min(1.0f, Math.min(scaleX, scaleY));
+
+        // Calculate centering based on the scaled-up resolution space
+        int scaledW = (int) (this.width / scale);
+        int scaledH = (int) (this.height / scale);
+        
+        panelX = (scaledW - PANEL_W) / 2;
+        panelY = (scaledH - PANEL_H) / 2;
     }
 
     private void drawText(MatrixStack m, String t, int x, int y, int color) {
@@ -70,10 +81,18 @@ public class ModMenuScreen extends Screen {
 
     @Override
     public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-        // Full-screen dim
+        // Full-screen dim (rendered at normal unscaled coordinates)
         fill(matrices, 0, 0, this.width, this.height, 0xC4000000);
 
-        // Panel
+        matrices.push();
+        // Scale the entire rendering matrix down so it fits perfectly
+        matrices.scale(scale, scale, 1.0f);
+
+        // Adjust mouse coordinates so hovering works perfectly inside the scaled UI
+        int smX = (int) (mouseX / scale);
+        int smY = (int) (mouseY / scale);
+
+        // Panel Background
         fill(matrices, panelX, panelY, panelX + PANEL_W, panelY + PANEL_H, BG);
 
         // Top accent line
@@ -95,8 +114,8 @@ public class ModMenuScreen extends Screen {
         int rowY = panelY + 49;
         for (int i = 0; i < modules.size(); i++) {
             Module mod = modules.get(i);
-            boolean hov = mouseX >= panelX && mouseX <= panelX + PANEL_W
-                       && mouseY >= rowY   && mouseY <  rowY + ROW_H;
+            boolean hov = smX >= panelX && smX <= panelX + PANEL_W
+                       && smY >= rowY   && smY <  rowY + ROW_H;
             if (hov) hoveredIdx = i;
 
             fill(matrices, panelX, rowY, panelX + PANEL_W, rowY + ROW_H, hov ? PANEL_HOV : BG);
@@ -138,6 +157,8 @@ public class ModMenuScreen extends Screen {
         // Footer
         fill(matrices, panelX, panelY + PANEL_H - 28, panelX + PANEL_W, panelY + PANEL_H, PANEL);
         drawTextCenter(matrices, "Press R or ESC to close", panelX + PANEL_W / 2, panelY + PANEL_H - 18, GREY);
+
+        matrices.pop();
 
         super.render(matrices, mouseX, mouseY, delta);
     }

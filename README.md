@@ -1,9 +1,20 @@
-# Example Mod
+# RyzixClient
 
-## Setup
+Client-side Fabric mod for Minecraft 1.16.5.
 
-For setup instructions, please see the [Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up) related to the IDE that you are using.
+## Modules
+- **StorageESP** - highlights chests, barrels, shulkers, hoppers, furnaces etc.
+- **PlayerESP** - boxes around other players
+- **FullBright** - maximum gamma (restored on disconnect / game close)
+- **Chest Counter** - HUD with the count of loaded storage containers
+
+## Keys
+- `R` - open mod menu
+- `G` - toggle StorageESP
+- PlayerESP / FullBright keys are unbound by default (Controls > RyzixClient)
+
+## Build
+`./gradlew build` - jar is in `build/libs/`. GitHub Actions builds and releases on every push to `main`.
 
 ## License
-
-This template is available under the CC0 license. Feel free to learn from it and incorporate it in your own projects.
+CC0-1.0

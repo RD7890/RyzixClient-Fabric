@@ -3,7 +3,7 @@
 	"id": "ryzixclient",
 	"version": "${version}",
 	"name": "RyzixClient",
-	"description": "A client-side Fabric mod featuring StorageESP and Freecam for Minecraft 1.16.5",
+	"description": "A client-side Fabric mod featuring StorageESP, PlayerESP, FullBright and a storage counter HUD for Minecraft 1.16.5",
 	"authors": [
 		"Ryzix"
 	],

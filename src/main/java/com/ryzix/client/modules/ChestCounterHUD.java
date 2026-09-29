@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ChestCounterHUD {
     private static boolean enabled = false;
-    // HUD position (draggable)
+    // HUD position
     public static int hudX = 10;
     public static int hudY = 10;
 
