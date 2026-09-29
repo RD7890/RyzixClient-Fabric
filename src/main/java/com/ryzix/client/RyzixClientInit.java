@@ -20,9 +20,11 @@ public class RyzixClientInit implements ClientModInitializer {
 	public static KeyBinding playerEspKey;
 	public static KeyBinding fullBrightKey;
 
+	private static boolean wasRDown = false;
+
 	@Override
 	public void onInitializeClient() {
-		// R = open mod menu
+		// R = open mod menu (Fallback registration, but we use raw GLFW for opening)
 		menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 				"key.ryzixclient.menu",
 				InputUtil.Type.KEYSYM,
@@ -58,14 +60,25 @@ public class RyzixClientInit implements ClientModInitializer {
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> FullBright.onDisconnect());
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			if (client.player == null) return;
-
-			// Open mod menu on R
-			while (menuKey.wasPressed()) {
-				if (client.currentScreen == null) {
-					client.openScreen(new ModMenuScreen());
+			
+			// 1. Raw Hardware check for 'R' Key so it works ANYWHERE and cannot be blocked
+			long windowHandle = client.getWindow().getHandle();
+			boolean isRDown = InputUtil.isKeyPressed(windowHandle, GLFW.GLFW_KEY_R);
+			
+			if (isRDown && !wasRDown) {
+				// Allow opening if in-game (currentScreen == null) OR on TitleScreen
+				if (client.currentScreen == null || client.currentScreen instanceof net.minecraft.client.gui.screen.TitleScreen) {
+					boolean onTitle = client.currentScreen != null; // True if TitleScreen
+					client.openScreen(new ModMenuScreen(client.currentScreen, onTitle));
 				}
 			}
+			wasRDown = isRDown;
+
+			// Consume the vanilla menu keybind so it doesn't do anything else
+			while (menuKey.wasPressed()) {}
+
+			// Only process in-game keybinds if player exists
+			if (client.player == null) return;
 
 			// Quick toggle StorageESP on G
 			while (espToggleKey.wasPressed()) {
