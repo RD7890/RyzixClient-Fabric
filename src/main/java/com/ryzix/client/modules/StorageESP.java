@@ -22,7 +22,7 @@ public class StorageESP {
 
 	public static void toggle() {
 		enabled = !enabled;
-		RyzixClient.LOGGER.info("[RyzixClient] StorageESP " + (enabled ? "enabled" : "disabled"));
+		RyzixClient.log("StorageESP " + (enabled ? "enabled" : "disabled"));
 	}
 
 	public static void render(MatrixStack matrices, float tickDelta) {

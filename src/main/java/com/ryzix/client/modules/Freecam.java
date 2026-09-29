@@ -50,7 +50,7 @@ public class Freecam {
 			camPitch = savedPitch;
 			speed = 1.0f;
 
-			RyzixClient.LOGGER.info("[RyzixClient] Freecam enabled");
+			RyzixClient.log("Freecam enabled");
 		} else {
 			// Restore player state
 			ClientPlayerEntity player = mc.player;
@@ -58,7 +58,7 @@ public class Freecam {
 				player.yaw = savedYaw;
 				player.pitch = savedPitch;
 			}
-			RyzixClient.LOGGER.info("[RyzixClient] Freecam disabled");
+			RyzixClient.log("Freecam disabled");
 		}
 	}
 
@@ -115,7 +115,7 @@ public class Freecam {
 	public static void disable() {
 		if (enabled) {
 			enabled = false;
-			RyzixClient.LOGGER.info("[RyzixClient] Freecam force-disabled");
+			RyzixClient.log("Freecam force-disabled");
 		}
 	}
 }
