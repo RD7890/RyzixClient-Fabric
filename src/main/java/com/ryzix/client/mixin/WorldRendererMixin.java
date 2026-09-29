@@ -1,5 +1,7 @@
 package com.ryzix.client.mixin;
 
+import com.ryzix.client.modules.ChestCounterHUD;
+import com.ryzix.client.modules.PlayerESP;
 import com.ryzix.client.modules.StorageESP;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
@@ -19,5 +21,6 @@ public class WorldRendererMixin {
 							   LightmapTextureManager lightmapTextureManager,
 							   Matrix4f matrix4f, CallbackInfo ci) {
 		StorageESP.render(matrices, tickDelta);
+		PlayerESP.render(matrices, tickDelta);
 	}
 }

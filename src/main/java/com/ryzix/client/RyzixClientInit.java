@@ -1,5 +1,6 @@
 package com.ryzix.client;
 
+import com.ryzix.client.gui.ModMenuScreen;
 import com.ryzix.client.modules.StorageESP;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -10,11 +11,20 @@ import org.lwjgl.glfw.GLFW;
 
 public class RyzixClientInit implements ClientModInitializer {
 
+	public static KeyBinding menuKey;
 	public static KeyBinding espToggleKey;
 
 	@Override
 	public void onInitializeClient() {
-		// Register StorageESP keybind (G key)
+		// R = open mod menu
+		menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.ryzixclient.menu",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_R,
+				"key.categories.ryzixclient"
+		));
+
+		// G = quick toggle StorageESP (without opening menu)
 		espToggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 				"key.ryzixclient.storageesp",
 				InputUtil.Type.KEYSYM,
@@ -22,15 +32,22 @@ public class RyzixClientInit implements ClientModInitializer {
 				"key.categories.ryzixclient"
 		));
 
-		// Tick event for keybind handling only
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			if (client.player == null) return;
 
+			// Open mod menu on R
+			while (menuKey.wasPressed()) {
+				if (client.currentScreen == null) {
+					client.openScreen(new ModMenuScreen());
+				}
+			}
+
+			// Quick toggle StorageESP on G
 			while (espToggleKey.wasPressed()) {
 				StorageESP.toggle();
 			}
 		});
 
-		RyzixClient.log("RyzixClient loaded. StorageESP toggle = G");
+		RyzixClient.log("RyzixClient loaded. R=Menu, G=Quick StorageESP toggle");
 	}
 }

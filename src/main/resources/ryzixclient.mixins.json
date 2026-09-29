@@ -3,7 +3,8 @@
 	"package": "com.ryzix.client.mixin",
 	"compatibilityLevel": "JAVA_8",
 	"client": [
-		"WorldRendererMixin"
+		"WorldRendererMixin",
+		"InGameHudMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
