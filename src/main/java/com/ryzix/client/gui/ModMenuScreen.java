@@ -7,6 +7,8 @@ import com.ryzix.client.modules.StorageESP;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.LiteralText;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.Util;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,8 @@ public class ModMenuScreen extends Screen {
     private static final int ROW_H   = 58;
 
     private final Screen parent;
+    private long openTime;
+    private static final Identifier LOGO = new Identifier("ryzixclient", "textures/gui/logo.png");
 
     private static class Module {
         final String icon;
@@ -57,13 +61,13 @@ public class ModMenuScreen extends Screen {
         modules.add(new Module("\u2609", "Chest Counter",  "HUD showing nearby storage count", ChestCounterHUD::toggle,ChestCounterHUD::isEnabled));
     }
 
-    // Default constructor for in-game keybind
     public ModMenuScreen() {
         this(null);
     }
 
     @Override
     protected void init() {
+        openTime = Util.getMeasuringTimeMs();
         float scaleY = (float) this.height / (PANEL_H + 20);
         float scaleX = (float) this.width / (PANEL_W + 20);
         scale = Math.min(1.0f, Math.min(scaleX, scaleY));
@@ -104,7 +108,6 @@ public class ModMenuScreen extends Screen {
         drawText(matrices, "RyzixClient",          panelX + 44, panelY + 15, WHITE);
         drawText(matrices, "v1.0  |  Modules",     panelX + 44, panelY + 27, GREY);
 
-        // Customize HUD Button
         int custX = panelX + PANEL_W - 85;
         int custY = panelY + 14;
         int custW = 75;
@@ -156,15 +159,53 @@ public class ModMenuScreen extends Screen {
         drawTextCenter(matrices, "Press R or ESC to close", panelX + PANEL_W / 2, panelY + PANEL_H - 18, GREY);
 
         matrices.pop();
+
+        // INTRO ANIMATION OVERLAY
+        long elapsed = Util.getMeasuringTimeMs() - openTime;
+        if (elapsed < 1200) {
+            float alpha = 1.0f;
+            if (elapsed > 800) {
+                alpha = 1.0f - ((elapsed - 800) / 400.0f); // Fade out last 400ms
+            }
+
+            int bgAlpha = (int)(alpha * 255);
+            fill(matrices, 0, 0, this.width, this.height, (bgAlpha << 24) | 0x050505);
+
+            com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+            com.mojang.blaze3d.systems.RenderSystem.color4f(1.0f, 1.0f, 1.0f, alpha);
+            
+            if (this.client != null) {
+                this.client.getTextureManager().bindTexture(LOGO);
+                int logoSize = 100;
+                int logoX = (this.width - logoSize) / 2;
+                int logoY = (this.height - logoSize) / 2 - 20;
+                drawTexture(matrices, logoX, logoY, 0.0F, 0.0F, logoSize, logoSize, logoSize, logoSize);
+
+                int barW = 140;
+                int barH = 3;
+                int barX = (this.width - barW) / 2;
+                int barY = logoY + logoSize + 25;
+
+                float progress = Math.min(1.0f, elapsed / 800.0f);
+
+                fill(matrices, barX, barY, barX + barW, barY + barH, (bgAlpha << 24) | 0x222222);
+                fill(matrices, barX, barY, barX + (int)(barW * progress), barY + barH, (bgAlpha << 24) | 0xFF2541);
+            }
+
+            com.mojang.blaze3d.systems.RenderSystem.color4f(1.0f, 1.0f, 1.0f, 1.0f);
+            com.mojang.blaze3d.systems.RenderSystem.disableBlend();
+        }
+
         super.render(matrices, mouseX, mouseY, delta);
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (Util.getMeasuringTimeMs() - openTime < 1200) return false;
+
         int smX = (int)(mx / scale);
         int smY = (int)(my / scale);
 
-        // Customize button click
         int custX = panelX + PANEL_W - 85;
         int custY = panelY + 14;
         int custW = 75;
@@ -183,6 +224,8 @@ public class ModMenuScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (Util.getMeasuringTimeMs() - openTime < 1200) return false;
+
         if (keyCode == 82 || keyCode == 256) {
             this.onClose();
             return true;
