@@ -10,177 +10,150 @@ import net.minecraft.text.LiteralText;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 public class ModMenuScreen extends Screen {
 
-    // Brand color #ff2541
-    private static final int ACCENT = 0xFFFF2541;
-    private static final int ACCENT_DIM = 0xAAFF2541;
-    private static final int BG = 0xFF0A0A0A;
-    private static final int PANEL = 0xFF111111;
-    private static final int PANEL_HOVER = 0xFF1A1A1A;
-    private static final int TEXT_WHITE = 0xFFFFFFFF;
-    private static final int TEXT_GREY = 0xFF888888;
-    private static final int DIVIDER = 0xFF1E1E1E;
+    private static final int ACCENT    = 0xFFFF2541;
+    private static final int BG        = 0xFF0A0A0A;
+    private static final int PANEL     = 0xFF111111;
+    private static final int PANEL_HOV = 0xFF1C1C1C;
+    private static final int DIVIDER   = 0xFF1E1E1E;
+    private static final int WHITE     = 0xFFFFFFFF;
+    private static final int GREY      = 0xFF888888;
 
-    // Panel dimensions
     private static final int PANEL_W = 280;
     private static final int PANEL_H = 340;
+    private static final int ROW_H   = 58;
 
-    // Module data
     private static class Module {
-        String icon;   // Unicode icon char (Font Awesome codepoints via unicode)
-        String name;
-        String desc;
-        Runnable toggle;
-        java.util.function.BooleanSupplier enabled;
-        float animProgress = 0f; // 0.0 = off, 1.0 = on
+        final String icon;
+        final String name;
+        final String desc;
+        final Runnable toggle;
+        final BooleanSupplier enabled;
+        float anim;
 
-        Module(String icon, String name, String desc, Runnable toggle, java.util.function.BooleanSupplier enabled) {
-            this.icon = icon;
-            this.name = name;
-            this.desc = desc;
-            this.toggle = toggle;
-            this.enabled = enabled;
-            this.animProgress = enabled.getAsBoolean() ? 1f : 0f;
+        Module(String icon, String name, String desc, Runnable toggle, BooleanSupplier enabled) {
+            this.icon = icon; this.name = name; this.desc = desc;
+            this.toggle = toggle; this.enabled = enabled;
+            this.anim = enabled.getAsBoolean() ? 1f : 0f;
         }
     }
 
     private final List<Module> modules = new ArrayList<>();
     private int panelX, panelY;
-    private int hoveredIndex = -1;
-
-    // For draggable HUD position feature
-    private boolean draggingHUD = false;
-    private int dragOffX, dragOffY;
+    private int hoveredIdx = -1;
 
     public ModMenuScreen() {
         super(new LiteralText("RyzixClient"));
-
-        modules.add(new Module("\u2302", "StorageESP", "Highlight storage containers",
-                StorageESP::toggle, StorageESP::isEnabled));
-        modules.add(new Module("\u25A9", "PlayerESP", "See players through walls",
-                PlayerESP::toggle, PlayerESP::isEnabled));
-        modules.add(new Module("\u2600", "FullBright", "Maximum visibility in the dark",
-                FullBright::toggle, FullBright::isEnabled));
-        modules.add(new Module("\u2609", "Chest Counter", "HUD showing nearby storage count",
-                ChestCounterHUD::toggle, ChestCounterHUD::isEnabled));
+        modules.add(new Module("\u2302", "StorageESP",     "Highlight storage containers",    StorageESP::toggle,     StorageESP::isEnabled));
+        modules.add(new Module("\u25A3", "PlayerESP",      "See players through walls",        PlayerESP::toggle,      PlayerESP::isEnabled));
+        modules.add(new Module("\u2600", "FullBright",     "Maximum visibility in the dark",   FullBright::toggle,     FullBright::isEnabled));
+        modules.add(new Module("\u2609", "Chest Counter",  "HUD showing nearby storage count", ChestCounterHUD::toggle,ChestCounterHUD::isEnabled));
     }
 
     @Override
     protected void init() {
-        panelX = (this.width - PANEL_W) / 2;
+        panelX = (this.width  - PANEL_W) / 2;
         panelY = (this.height - PANEL_H) / 2;
+    }
+
+    private void drawText(MatrixStack m, String t, int x, int y, int color) {
+        this.textRenderer.draw(m, t, (float) x, (float) y, color);
+    }
+
+    private void drawTextCenter(MatrixStack m, String t, int cx, int y, int color) {
+        int w = this.textRenderer.getWidth(t);
+        this.textRenderer.draw(m, t, (float)(cx - w / 2), (float) y, color);
     }
 
     @Override
     public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-        // Dim world behind menu
-        fillGradient(matrices, 0, 0, this.width, this.height, 0xC0000000, 0xC0000000);
+        // Full-screen dim
+        fill(matrices, 0, 0, this.width, this.height, 0xC4000000);
 
-        // Panel background
+        // Panel
         fill(matrices, panelX, panelY, panelX + PANEL_W, panelY + PANEL_H, BG);
 
-        // Top accent bar
+        // Top accent line
         fill(matrices, panelX, panelY, panelX + PANEL_W, panelY + 3, ACCENT);
 
-        // Header section
+        // Header
         fill(matrices, panelX, panelY + 3, panelX + PANEL_W, panelY + 48, PANEL);
-
-        // Logo text "R" in accent color box
-        fill(matrices, panelX + 16, panelY + 11, panelX + 36, panelY + 37, ACCENT);
-        drawCenteredString(matrices, this.textRenderer, "R", panelX + 26, panelY + 20, TEXT_WHITE);
-
-        // Mod name
-        drawString(matrices, this.textRenderer, "RyzixClient", panelX + 44, panelY + 16, TEXT_WHITE);
-        drawString(matrices, this.textRenderer, "v1.0  |  Modules", panelX + 44, panelY + 28, TEXT_GREY);
-
-        // Divider
+        // Logo box
+        fill(matrices, panelX + 14, panelY + 11, panelX + 36, panelY + 37, ACCENT);
+        drawTextCenter(matrices, "R", panelX + 25, panelY + 20, WHITE);
+        // Title
+        drawText(matrices, "RyzixClient",          panelX + 44, panelY + 15, WHITE);
+        drawText(matrices, "v1.0  |  Modules",     panelX + 44, panelY + 27, GREY);
+        // Header divider
         fill(matrices, panelX, panelY + 48, panelX + PANEL_W, panelY + 49, DIVIDER);
 
         // Module rows
-        hoveredIndex = -1;
+        hoveredIdx = -1;
         int rowY = panelY + 49;
-        int rowH = 58;
-
         for (int i = 0; i < modules.size(); i++) {
-            Module m = modules.get(i);
-            int rowX = panelX;
-            int rowBottom = rowY + rowH;
+            Module mod = modules.get(i);
+            boolean hov = mouseX >= panelX && mouseX <= panelX + PANEL_W
+                       && mouseY >= rowY   && mouseY <  rowY + ROW_H;
+            if (hov) hoveredIdx = i;
 
-            boolean hovered = mouseX >= rowX && mouseX <= rowX + PANEL_W
-                    && mouseY >= rowY && mouseY <= rowBottom;
-            if (hovered) hoveredIndex = i;
+            fill(matrices, panelX, rowY, panelX + PANEL_W, rowY + ROW_H, hov ? PANEL_HOV : BG);
 
-            // Row bg
-            fill(matrices, rowX, rowY, rowX + PANEL_W, rowBottom, hovered ? PANEL_HOVER : BG);
+            boolean on = mod.enabled.getAsBoolean();
+            // Smooth animation
+            float target = on ? 1f : 0f;
+            mod.anim += (target - mod.anim) * Math.min(1f, delta * 0.2f);
 
-            // Left accent strip if enabled
-            boolean on = m.enabled.getAsBoolean();
-
-            // Animate toggle
-            if (on && m.animProgress < 1f) m.animProgress = Math.min(1f, m.animProgress + delta * 0.15f);
-            if (!on && m.animProgress > 0f) m.animProgress = Math.max(0f, m.animProgress - delta * 0.15f);
-
-            if (m.animProgress > 0f) {
-                int stripH = (int)(rowH * m.animProgress);
-                fill(matrices, rowX, rowY + (rowH - stripH), rowX + 3, rowY + rowH, ACCENT);
+            // Left accent strip
+            if (mod.anim > 0.01f) {
+                int sh = (int)(ROW_H * mod.anim);
+                fill(matrices, panelX, rowY + (ROW_H - sh), panelX + 3, rowY + ROW_H, ACCENT);
             }
 
             // Icon box
-            int iconBoxColor = on ? ACCENT : 0xFF222222;
-            fill(matrices, rowX + 14, rowY + 14, rowX + 36, rowY + 36, iconBoxColor);
-            drawCenteredString(matrices, this.textRenderer, m.icon, rowX + 25, rowY + 21, TEXT_WHITE);
+            fill(matrices, panelX + 14, rowY + 14, panelX + 36, rowY + 36, on ? ACCENT : 0xFF222222);
+            drawTextCenter(matrices, mod.icon, panelX + 25, rowY + 21, WHITE);
 
-            // Name
-            drawString(matrices, this.textRenderer, m.name, rowX + 46, rowY + 14, TEXT_WHITE);
-
-            // Description
-            drawString(matrices, this.textRenderer, m.desc, rowX + 46, rowY + 27, TEXT_GREY);
+            // Name & description
+            drawText(matrices, mod.name, panelX + 46, rowY + 14, WHITE);
+            drawText(matrices, mod.desc, panelX + 46, rowY + 26, GREY);
 
             // Toggle pill
-            int pillX = rowX + PANEL_W - 52;
-            int pillY2 = rowY + 22;
+            int pillX = panelX + PANEL_W - 52;
+            int pillY = rowY + 21;
             int pillW = 34;
             int pillH = 14;
-            int pillColor = on ? ACCENT : 0xFF333333;
-            fill(matrices, pillX, pillY2, pillX + pillW, pillY2 + pillH, pillColor);
+            fill(matrices, pillX, pillY, pillX + pillW, pillY + pillH, on ? ACCENT : 0xFF333333);
+            int dotX = (int)(pillX + 2 + (pillW - 14) * mod.anim);
+            fill(matrices, dotX, pillY + 2, dotX + 10, pillY + pillH - 2, WHITE);
 
-            // Pill dot position (animated)
-            int dotX = (int)(pillX + 2 + (pillW - 14) * m.animProgress);
-            fill(matrices, dotX, pillY2 + 2, dotX + 10, pillY2 + pillH - 2, TEXT_WHITE);
+            // Row divider
+            fill(matrices, panelX + 14, rowY + ROW_H - 1, panelX + PANEL_W - 14, rowY + ROW_H, DIVIDER);
 
-            // Status text
-            String status = on ? "ON" : "OFF";
-            drawCenteredString(matrices, this.textRenderer, status, pillX + pillW / 2, pillY2 + pillH + 4, on ? ACCENT : TEXT_GREY);
-
-            // Bottom divider
-            fill(matrices, rowX + 14, rowBottom - 1, rowX + PANEL_W - 14, rowBottom, DIVIDER);
-
-            rowY += rowH;
+            rowY += ROW_H;
         }
 
         // Footer
         fill(matrices, panelX, panelY + PANEL_H - 28, panelX + PANEL_W, panelY + PANEL_H, PANEL);
-        drawCenteredString(matrices, this.textRenderer, "Press \u00A7cR\u00A7r or \u00A77ESC\u00A7r to close",
-                panelX + PANEL_W / 2, panelY + PANEL_H - 18, TEXT_GREY);
+        drawTextCenter(matrices, "Press R or ESC to close", panelX + PANEL_W / 2, panelY + PANEL_H - 18, GREY);
 
         super.render(matrices, mouseX, mouseY, delta);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && hoveredIndex >= 0) {
-            modules.get(hoveredIndex).toggle.run();
+    public boolean mouseClicked(double mx, double my, int button) {
+        if (button == 0 && hoveredIdx >= 0) {
+            modules.get(hoveredIdx).toggle.run();
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(mx, my, button);
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // Close on R or ESC
-        if (keyCode == 82 || keyCode == 256) { // 82 = R, 256 = ESC
+        if (keyCode == 82 || keyCode == 256) { // R or ESC
             this.onClose();
             return true;
         }
@@ -189,6 +162,6 @@ public class ModMenuScreen extends Screen {
 
     @Override
     public boolean shouldPause() {
-        return false; // Don't pause the game
+        return false;
     }
 }
