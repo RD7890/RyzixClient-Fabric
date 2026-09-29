@@ -22,7 +22,9 @@ public class HudEditScreen extends Screen {
         this.renderBackground(matrices);
 
         // Instructions
-        drawCenteredString(matrices, this.textRenderer, "Drag the HUD to reposition. Press ESC to save.", this.width / 2, 20, 0xFFFFFFFF);
+        String text = "Drag the HUD to reposition. Press ESC to save.";
+        int textW = this.textRenderer.getWidth(text);
+        this.textRenderer.draw(matrices, text, (float)(this.width / 2 - textW / 2), 20f, 0xFFFFFFFF);
 
         int hudX = ChestCounterHUD.hudX;
         int hudY = ChestCounterHUD.hudY;
