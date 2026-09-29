@@ -58,11 +58,16 @@ public class ModMenuScreen extends Screen {
         final String desc;
         final Runnable onClick;
         final BooleanSupplier enabled;
+        final boolean isSubScreen; // true = shows ">" arrow instead of toggle pill
         float anim;
 
         Module(Identifier icon, String name, String desc, Runnable onClick, BooleanSupplier enabled) {
+            this(icon, name, desc, onClick, enabled, false);
+        }
+
+        Module(Identifier icon, String name, String desc, Runnable onClick, BooleanSupplier enabled, boolean isSubScreen) {
             this.icon = icon; this.name = name; this.desc = desc;
-            this.onClick = onClick; this.enabled = enabled;
+            this.onClick = onClick; this.enabled = enabled; this.isSubScreen = isSubScreen;
             this.anim = enabled != null && enabled.getAsBoolean() ? 1f : 0f;
         }
     }
@@ -96,9 +101,9 @@ public class ModMenuScreen extends Screen {
 
         modules.add(new Module(
             new Identifier("ryzixclient", "textures/gui/icons/ore.png"),
-            "OreESP", "Highlight ores \u00BB Click for Settings",
+            "OreESP", "Highlight ores \u00BB Settings",
             () -> { if (this.client != null) this.client.openScreen(new OreESPScreen(this)); },
-            OreESP::isEnabled));
+            null, true));
     }
 
     public ModMenuScreen() {
@@ -253,12 +258,17 @@ public class ModMenuScreen extends Screen {
             drawText(matrices, mod.name, panelX + 46, cy - 10, WHITE);
             drawText(matrices, mod.desc, panelX + 46, cy + 2,  GREY);
 
-            // Toggle pill
-            int pillX = panelX + PANEL_W - 52;
-            int pillY = cy - 7;
-            fill(matrices, pillX, pillY, pillX + 34, pillY + 14, on ? ACCENT : 0xFF333333);
-            int dotX = (int)(pillX + 2 + 20 * mod.anim);
-            fill(matrices, dotX, pillY + 2, dotX + 10, pillY + 12, WHITE);
+            if (mod.isSubScreen) {
+                // Show ">" arrow for sub-screen entries
+                drawText(matrices, ">", panelX + PANEL_W - 22, cy - 4, ACCENT);
+            } else {
+                // Toggle pill
+                int pillX = panelX + PANEL_W - 52;
+                int pillY = cy - 7;
+                fill(matrices, pillX, pillY, pillX + 34, pillY + 14, on ? ACCENT : 0xFF333333);
+                int dotX = (int)(pillX + 2 + 20 * mod.anim);
+                fill(matrices, dotX, pillY + 2, dotX + 10, pillY + 12, WHITE);
+            }
 
             fill(matrices, panelX + 14, rowY + ROW_H - 1, panelX + PANEL_W - 14, rowY + ROW_H, DIVIDER);
             rowY += ROW_H;

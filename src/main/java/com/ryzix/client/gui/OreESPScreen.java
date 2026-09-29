@@ -20,13 +20,14 @@ public class OreESPScreen extends Screen {
     private long openTime;
 
     private int panelW = 260;
-    private int panelH = 0; // calculated
+    private int panelH = 0;
     private int panelX, panelY;
     private static final int ROW_H = 50;
     private static final int HEADER_H = 44;
+    private static final int MASTER_H = 44; // Master toggle row height
     private static final int FOOTER_H = 24;
 
-    // Ore definitions: name, desc, color (ARGB), toggle getter/setter
+    // Ore definitions
     private static final OreEntry[] ORES = {
         new OreEntry("Iron Ore",    "Shows iron ore blocks",    0xFFAAAAAA, () -> OreESP.showIron,    v -> OreESP.showIron = v),
         new OreEntry("Gold Ore",    "Shows gold ore blocks",    0xFFFFDD00, () -> OreESP.showGold,    v -> OreESP.showGold = v),
@@ -34,7 +35,9 @@ public class OreESPScreen extends Screen {
         new OreEntry("Diamond Ore", "Shows diamond ore blocks", 0xFF00DDDD, () -> OreESP.showDiamond, v -> OreESP.showDiamond = v),
     };
 
+    // Hovered row: -1 = none, -2 = master toggle, 0..3 = ores
     private int hoveredIdx = -1;
+    private float masterAnim = 0f;
     private final float[] pillAnim = new float[ORES.length];
 
     private interface BoolGetter { boolean get(); }
@@ -60,9 +63,10 @@ public class OreESPScreen extends Screen {
     @Override
     protected void init() {
         openTime = Util.getMeasuringTimeMs();
-        panelH = HEADER_H + ORES.length * ROW_H + FOOTER_H;
+        panelH = HEADER_H + MASTER_H + ORES.length * ROW_H + FOOTER_H;
         panelX = (this.width - panelW) / 2;
         panelY = (this.height - panelH) / 2;
+        masterAnim = OreESP.isEnabled() ? 1f : 0f;
         for (int i = 0; i < ORES.length; i++) {
             pillAnim[i] = ORES[i].getter.get() ? 1f : 0f;
         }
@@ -79,28 +83,61 @@ public class OreESPScreen extends Screen {
 
     @Override
     public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-        // Dim background
         fill(matrices, 0, 0, this.width, this.height, 0x60000000);
 
-        // Main panel (sharp corners)
+        // Main panel
         fill(matrices, panelX, panelY, panelX + panelW, panelY + panelH, BG);
 
-        // Header top red bar
+        // Header
         fill(matrices, panelX, panelY, panelX + panelW, panelY + 3, ACCENT);
         fill(matrices, panelX, panelY + 3, panelX + panelW, panelY + HEADER_H, PANEL);
 
-        // Header — back arrow + title
+        // Back arrow
         fill(matrices, panelX + 10, panelY + 13, panelX + 28, panelY + 31, ACCENT);
         drawTextCenter(matrices, "<", panelX + 19, panelY + 18, WHITE);
 
         drawText(matrices, "OreESP Settings", panelX + 36, panelY + 14, WHITE);
-        drawText(matrices, "Toggle individual ores", panelX + 36, panelY + 25, GREY);
+        drawText(matrices, "Press Z to quick toggle", panelX + 36, panelY + 25, GREY);
 
         fill(matrices, panelX, panelY + HEADER_H, panelX + panelW, panelY + HEADER_H + 1, DIVIDER);
 
-        // Rows
         hoveredIdx = -1;
-        int rowY = panelY + HEADER_H + 1;
+
+        // ── MASTER TOGGLE ROW ────────────────────────────────────────
+        int masterY = panelY + HEADER_H + 1;
+        boolean masterOn = OreESP.isEnabled();
+        boolean masterHov = mouseX >= panelX && mouseX <= panelX + panelW
+                         && mouseY >= masterY && mouseY < masterY + MASTER_H;
+        if (masterHov) hoveredIdx = -2;
+
+        fill(matrices, panelX, masterY, panelX + panelW, masterY + MASTER_H, masterHov ? PANEL_HOV : PANEL);
+
+        // Master left accent bar
+        float masterTarget = masterOn ? 1f : 0f;
+        masterAnim += (masterTarget - masterAnim) * Math.min(1f, delta * 0.2f);
+        if (masterAnim > 0.01f) {
+            int sh = (int)(MASTER_H * masterAnim);
+            fill(matrices, panelX, masterY + (MASTER_H - sh), panelX + 3, masterY + MASTER_H, ACCENT);
+        }
+
+        int mcy = masterY + MASTER_H / 2;
+        fill(matrices, panelX + 14, mcy - 11, panelX + 36, mcy + 11, masterOn ? ACCENT : 0xFF222222);
+        drawTextCenter(matrices, "O", panelX + 25, mcy - 4, WHITE);
+
+        drawText(matrices, "OreESP", panelX + 46, mcy - 9, WHITE);
+        drawText(matrices, masterOn ? "Enabled" : "Disabled", panelX + 46, mcy + 3, masterOn ? ACCENT : GREY);
+
+        // Master toggle pill
+        int mpX = panelX + panelW - 50;
+        int mpY = mcy - 7;
+        fill(matrices, mpX, mpY, mpX + 32, mpY + 14, masterOn ? ACCENT : 0xFF333333);
+        int mdotX = (int)(mpX + 2 + 18 * masterAnim);
+        fill(matrices, mdotX, mpY + 2, mdotX + 10, mpY + 10, WHITE);
+
+        fill(matrices, panelX + 10, masterY + MASTER_H - 1, panelX + panelW - 10, masterY + MASTER_H, DIVIDER);
+
+        // ── INDIVIDUAL ORE ROWS ──────────────────────────────────────
+        int rowY = masterY + MASTER_H;
 
         for (int i = 0; i < ORES.length; i++) {
             OreEntry ore = ORES[i];
@@ -111,7 +148,7 @@ public class OreESPScreen extends Screen {
 
             fill(matrices, panelX, rowY, panelX + panelW, rowY + ROW_H, hov ? PANEL_HOV : BG);
 
-            // Animated left accent bar
+            // Left accent bar
             float target = on ? 1f : 0f;
             pillAnim[i] += (target - pillAnim[i]) * Math.min(1f, delta * 0.2f);
             if (pillAnim[i] > 0.01f) {
@@ -121,8 +158,7 @@ public class OreESPScreen extends Screen {
 
             int centerY = rowY + ROW_H / 2;
 
-            // Color dot (square, matching ore color)
-            int dotColor = (on ? 0xFF000000 : 0xFF222222) | (ore.color & 0x00FFFFFF);
+            // Ore color square
             fill(matrices, panelX + 14, centerY - 10, panelX + 34, centerY + 10, on ? ore.color : 0xFF333333);
 
             drawText(matrices, ore.name, panelX + 44, centerY - 9, WHITE);
@@ -131,11 +167,9 @@ public class OreESPScreen extends Screen {
             // Toggle pill
             int pillX = panelX + panelW - 50;
             int pillY = centerY - 7;
-            int pillW = 32;
-            int pillH = 14;
-            fill(matrices, pillX, pillY, pillX + pillW, pillY + pillH, on ? ACCENT : 0xFF333333);
-            int dotX = (int)(pillX + 2 + (pillW - 14) * pillAnim[i]);
-            fill(matrices, dotX, pillY + 2, dotX + 10, pillY + pillH - 2, WHITE);
+            fill(matrices, pillX, pillY, pillX + 32, pillY + 14, on ? ACCENT : 0xFF333333);
+            int dotX = (int)(pillX + 2 + 18 * pillAnim[i]);
+            fill(matrices, dotX, pillY + 2, dotX + 10, pillY + 10, WHITE);
 
             fill(matrices, panelX + 10, rowY + ROW_H - 1, panelX + panelW - 10, rowY + ROW_H, DIVIDER);
             rowY += ROW_H;
@@ -151,13 +185,17 @@ public class OreESPScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
         if (btn == 0) {
-            // Back arrow click
-            int bx = panelX + 10, by = panelY + 13;
-            if (mx >= bx && mx <= bx + 18 && my >= by && my <= by + 18) {
+            // Back arrow
+            if (mx >= panelX + 10 && mx <= panelX + 28 && my >= panelY + 13 && my <= panelY + 31) {
                 this.onClose();
                 return true;
             }
-            // Ore toggle
+            // Master toggle
+            if (hoveredIdx == -2) {
+                OreESP.toggle();
+                return true;
+            }
+            // Individual ore toggle
             if (hoveredIdx >= 0) {
                 OreEntry ore = ORES[hoveredIdx];
                 ore.setter.set(!ore.getter.get());
@@ -169,7 +207,7 @@ public class OreESPScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256 || keyCode == 82) { // ESC or R
+        if (keyCode == 256 || keyCode == 82) {
             this.onClose();
             return true;
         }

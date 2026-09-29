@@ -2,6 +2,7 @@ package com.ryzix.client;
 
 import com.ryzix.client.gui.ModMenuScreen;
 import com.ryzix.client.modules.FullBright;
+import com.ryzix.client.modules.OreESP;
 import com.ryzix.client.modules.PlayerESP;
 import com.ryzix.client.modules.StorageESP;
 import net.fabricmc.api.ClientModInitializer;
@@ -21,6 +22,7 @@ public class RyzixClientInit implements ClientModInitializer {
 	public static KeyBinding fullBrightKey;
 
 	private static boolean wasRDown = false;
+	private static boolean wasZDown = false;
 
 	@Override
 	public void onInitializeClient() {
@@ -74,6 +76,13 @@ public class RyzixClientInit implements ClientModInitializer {
 			}
 			wasRDown = isRDown;
 
+			// 2. Raw Hardware check for 'Z' Key — quick toggle OreESP
+			boolean isZDown = InputUtil.isKeyPressed(windowHandle, GLFW.GLFW_KEY_Z);
+			if (isZDown && !wasZDown && client.currentScreen == null) {
+				OreESP.toggle();
+			}
+			wasZDown = isZDown;
+
 			// Consume the vanilla menu keybind so it doesn't do anything else
 			while (menuKey.wasPressed()) {}
 
@@ -94,6 +103,6 @@ public class RyzixClientInit implements ClientModInitializer {
 			}
 		});
 
-		RyzixClient.log("RyzixClient loaded. R=Menu, G=Quick StorageESP toggle");
+		RyzixClient.log("RyzixClient loaded. R=Menu, G=StorageESP, Z=OreESP");
 	}
 }
