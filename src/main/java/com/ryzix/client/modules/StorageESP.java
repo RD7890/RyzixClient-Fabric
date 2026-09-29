@@ -38,12 +38,12 @@ public class StorageESP {
 			BlockPos pos = be.getPos();
 			float r = 1f, g = 1f, b = 1f, a = 0.8f;
 
-			if (be instanceof ChestBlockEntity) {
-				// Yellow for chests
-				r = 1.0f; g = 0.9f; b = 0.0f;
-			} else if (be instanceof TrappedChestBlockEntity) {
+			if (be instanceof TrappedChestBlockEntity) {
 				// Orange for trapped chests
 				r = 1.0f; g = 0.6f; b = 0.0f;
+			} else if (be instanceof ChestBlockEntity) {
+				// Yellow for chests
+				r = 1.0f; g = 0.9f; b = 0.0f;
 			} else if (be instanceof EnderChestBlockEntity) {
 				// Magenta for ender chests
 				r = 0.8f; g = 0.0f; b = 0.8f;
