@@ -1,6 +1,5 @@
 package com.ryzix.client;
 
-import com.ryzix.client.modules.Freecam;
 import com.ryzix.client.modules.StorageESP;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -12,11 +11,10 @@ import org.lwjgl.glfw.GLFW;
 public class RyzixClientInit implements ClientModInitializer {
 
 	public static KeyBinding espToggleKey;
-	public static KeyBinding freecamToggleKey;
 
 	@Override
 	public void onInitializeClient() {
-		// Register keybinds
+		// Register StorageESP keybind (G key)
 		espToggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 				"key.ryzixclient.storageesp",
 				InputUtil.Type.KEYSYM,
@@ -24,28 +22,15 @@ public class RyzixClientInit implements ClientModInitializer {
 				"key.categories.ryzixclient"
 		));
 
-		freecamToggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-				"key.ryzixclient.freecam",
-				InputUtil.Type.KEYSYM,
-				GLFW.GLFW_KEY_F4,
-				"key.categories.ryzixclient"
-		));
-
-		// Register tick event
+		// Tick event for keybind handling only
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			if (client.player == null) return;
 
 			while (espToggleKey.wasPressed()) {
 				StorageESP.toggle();
 			}
-
-			while (freecamToggleKey.wasPressed()) {
-				Freecam.toggle();
-			}
-
-			Freecam.tick();
 		});
 
-		RyzixClient.log("Client features initialized. StorageESP=G, Freecam=F4");
+		RyzixClient.log("RyzixClient loaded. StorageESP toggle = G");
 	}
 }

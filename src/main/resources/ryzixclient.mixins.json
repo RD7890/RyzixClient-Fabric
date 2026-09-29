@@ -3,9 +3,7 @@
 	"package": "com.ryzix.client.mixin",
 	"compatibilityLevel": "JAVA_8",
 	"client": [
-		"WorldRendererMixin",
-		"CameraMixin",
-		"ClientPlayerEntityMixin"
+		"WorldRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
