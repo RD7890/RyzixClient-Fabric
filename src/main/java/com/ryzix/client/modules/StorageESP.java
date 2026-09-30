@@ -8,6 +8,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
+import net.minecraft.world.chunk.WorldChunk;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,12 +75,21 @@ public class StorageESP {
 		}
 	}
 
-	private static List<BlockEntity> getBlockEntities(ClientWorld world) {
+	// 1.18+ has no world.blockEntities list, so collect from loaded chunks around the player
+	public static List<BlockEntity> getBlockEntities(ClientWorld world) {
 		List<BlockEntity> result = new ArrayList<>();
-		// world.blockEntities is the list of all loaded block entities
+		MinecraftClient mc = MinecraftClient.getInstance();
+		if (mc.player == null) return result;
+		int radius = Math.min(mc.options.getClampedViewDistance(), 32);
+		int pcx = mc.player.getBlockPos().getX() >> 4;
+		int pcz = mc.player.getBlockPos().getZ() >> 4;
 		try {
-			for (BlockEntity be : world.blockEntities) {
-				result.add(be);
+			for (int cx = pcx - radius; cx <= pcx + radius; cx++) {
+				for (int cz = pcz - radius; cz <= pcz + radius; cz++) {
+					WorldChunk chunk = world.getChunkManager().getWorldChunk(cx, cz);
+					if (chunk == null) continue;
+					result.addAll(chunk.getBlockEntities().values());
+				}
 			}
 		} catch (Exception e) {
 			// Concurrent modification safety

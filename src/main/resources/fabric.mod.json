@@ -3,7 +3,7 @@
 	"id": "ryzixclient",
 	"version": "${version}",
 	"name": "RyzixClient",
-	"description": "A client-side Fabric mod featuring StorageESP, PlayerESP, FullBright and a storage counter HUD for Minecraft 1.16.5",
+	"description": "A client-side Fabric mod featuring StorageESP, PlayerESP, OreESP, FullBright and a storage counter HUD for Minecraft 1.20.4",
 	"authors": [
 		"Ryzix"
 	],
@@ -21,16 +21,10 @@
 			"com.ryzix.client.RyzixClientInit"
 		]
 	},
-	"mixins": [
-		{
-			"config": "ryzixclient.mixins.json",
-			"environment": "client"
-		}
-	],
 	"depends": {
-		"fabricloader": ">=0.14.0",
-		"minecraft": "1.16.5",
-		"java": ">=8",
-		"fabric": "*"
+		"fabricloader": ">=0.15.11",
+		"minecraft": "~1.20.4",
+		"java": ">=17",
+		"fabric-api": "*"
 	}
 }

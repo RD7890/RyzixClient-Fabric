@@ -2,8 +2,8 @@ package com.ryzix.client.gui;
 
 import com.ryzix.client.modules.ChestCounterHUD;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.LiteralText;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.text.Text;
 
 public class HudEditScreen extends Screen {
     private final Screen parent;
@@ -12,34 +12,33 @@ public class HudEditScreen extends Screen {
     private int dragOffsetY = 0;
 
     public HudEditScreen(Screen parent) {
-        super(new LiteralText("HUD Editor"));
+        super(Text.literal("HUD Editor"));
         this.parent = parent;
     }
 
     @Override
-    public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
         // Dim the background so the HUD stands out
-        this.renderBackground(matrices);
+        this.renderBackground(matrices, mouseX, mouseY, delta);
 
         // Instructions
         String text = "Drag the HUD to reposition. Press ESC to save.";
         int textW = this.textRenderer.getWidth(text);
-        this.textRenderer.draw(matrices, text, (float)(this.width / 2 - textW / 2), 20f, 0xFFFFFFFF);
+        matrices.drawText(this.textRenderer, text, this.width / 2 - textW / 2, 20, 0xFFFFFFFF, false);
 
         int hudX = ChestCounterHUD.hudX;
         int hudY = ChestCounterHUD.hudY;
 
         // Hover outline
         if (mouseX >= hudX - 4 && mouseX <= hudX + 100 && mouseY >= hudY - 3 && mouseY <= hudY + 14) {
-            fill(matrices, hudX - 5, hudY - 4, hudX + 101, hudY + 15, 0x55FF2541);
+            matrices.fill(hudX - 5, hudY - 4, hudX + 101, hudY + 15, 0x55FF2541);
         }
 
         // Draw the exact same pill from InGameHudMixin so user sees what it looks like
-        fill(matrices, hudX - 4, hudY - 3, hudX + 100, hudY + 14, 0xCC0A0A0A);
-        fill(matrices, hudX - 4, hudY - 3, hudX - 1, hudY + 14, 0xFFFF2541);
-        this.textRenderer.drawWithShadow(matrices, "\u2302 Storages: 99", hudX + 3, hudY, 0xFFFF2541);
+        matrices.fill(hudX - 4, hudY - 3, hudX + 100, hudY + 14, 0xCC0A0A0A);
+        matrices.fill(hudX - 4, hudY - 3, hudX - 1, hudY + 14, 0xFFFF2541);
+        matrices.drawText(this.textRenderer, "\u2302 Storages: 99", hudX + 3, hudY, 0xFFFF2541, true);
 
-        super.render(matrices, mouseX, mouseY, delta);
     }
 
     @Override
@@ -77,7 +76,7 @@ public class HudEditScreen extends Screen {
     }
 
     @Override
-    public void onClose() {
-        this.client.openScreen(parent);
+    public void close() {
+        this.client.setScreen(parent);
     }
 }

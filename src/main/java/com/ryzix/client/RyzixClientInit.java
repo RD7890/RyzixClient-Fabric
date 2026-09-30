@@ -1,6 +1,7 @@
 package com.ryzix.client;
 
 import com.ryzix.client.gui.ModMenuScreen;
+import com.ryzix.client.modules.ChestCounterHUD;
 import com.ryzix.client.modules.FullBright;
 import com.ryzix.client.modules.OreESP;
 import com.ryzix.client.modules.PlayerESP;
@@ -10,6 +11,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
@@ -57,7 +61,19 @@ public class RyzixClientInit implements ClientModInitializer {
 				"key.categories.ryzixclient"
 		));
 
-		// Restore gamma on disconnect / game close so 16.0 never gets saved to options.txt
+		// World-space ESP rendering (replaces the old WorldRenderer mixin)
+		WorldRenderEvents.LAST.register(ctx -> {
+			MatrixStack m = ctx.matrixStack();
+			float td = ctx.tickDelta();
+			StorageESP.render(m, td);
+			PlayerESP.render(m, td);
+			OreESP.render(m, td);
+		});
+
+		// HUD rendering (replaces the old InGameHud mixin)
+		HudRenderCallback.EVENT.register((ctx, td) -> ChestCounterHUD.render(ctx));
+
+		// Reset FullBright state on disconnect / game close
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> FullBright.onDisconnect());
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> FullBright.onDisconnect());
 
@@ -71,7 +87,7 @@ public class RyzixClientInit implements ClientModInitializer {
 				// Allow opening if in-game (currentScreen == null) OR on TitleScreen
 				if (client.currentScreen == null || client.currentScreen instanceof net.minecraft.client.gui.screen.TitleScreen) {
 					boolean onTitle = client.currentScreen != null; // True if TitleScreen
-					client.openScreen(new ModMenuScreen(client.currentScreen, onTitle));
+					client.setScreen(new ModMenuScreen(client.currentScreen, onTitle));
 				}
 			}
 			wasRDown = isRDown;
@@ -82,6 +98,9 @@ public class RyzixClientInit implements ClientModInitializer {
 				OreESP.toggle();
 			}
 			wasZDown = isZDown;
+
+			// Keep the client-side night vision alive while FullBright is on
+			FullBright.tick(client);
 
 			// Consume the vanilla menu keybind so it doesn't do anything else
 			while (menuKey.wasPressed()) {}

@@ -83,7 +83,7 @@ public class OreESP {
         if (now - lastScanTime >= SCAN_INTERVAL_MS && scanning.compareAndSet(false, true)) {
             lastScanTime = now;
             BlockPos playerPos = mc.player.getBlockPos();
-            WorldChunk chunk = world.getChunk(playerPos.getX() >> 4, playerPos.getZ() >> 4);
+            WorldChunk chunk = world.getChunkManager().getWorldChunk(playerPos.getX() >> 4, playerPos.getZ() >> 4);
             if (chunk == null || chunk.isEmpty()) {
                 scanning.set(false);
             } else {
@@ -126,10 +126,11 @@ public class OreESP {
         int startZ = chunk.getPos().getStartZ();
         BlockPos.Mutable m = new BlockPos.Mutable();
 
-        // Only below y=64 where these ores generate
+        // From world bottom (-64 in 1.18+, deepslate layers included) up to y=64
+        int minY = chunk.getBottomY();
         for (int x = startX; x < startX + 16; x++) {
             for (int z = startZ; z < startZ + 16; z++) {
-                for (int y = 0; y < SCAN_MAX_Y; y++) {
+                for (int y = minY; y < SCAN_MAX_Y; y++) {
                     m.set(x, y, z);
                     OreType type = typeOf(chunk.getBlockState(m).getBlock());
                     if (type != null) found.add(new CachedOre(m.toImmutable(), type));
@@ -140,10 +141,10 @@ public class OreESP {
     }
 
     private static OreType typeOf(Block block) {
-        if (block == Blocks.IRON_ORE)    return OreType.IRON;
-        if (block == Blocks.GOLD_ORE)    return OreType.GOLD;
-        if (block == Blocks.LAPIS_ORE)   return OreType.LAPIS;
-        if (block == Blocks.DIAMOND_ORE) return OreType.DIAMOND;
+        if (block == Blocks.IRON_ORE    || block == Blocks.DEEPSLATE_IRON_ORE)    return OreType.IRON;
+        if (block == Blocks.GOLD_ORE    || block == Blocks.DEEPSLATE_GOLD_ORE)    return OreType.GOLD;
+        if (block == Blocks.LAPIS_ORE   || block == Blocks.DEEPSLATE_LAPIS_ORE)   return OreType.LAPIS;
+        if (block == Blocks.DIAMOND_ORE || block == Blocks.DEEPSLATE_DIAMOND_ORE) return OreType.DIAMOND;
         return null;
     }
 }

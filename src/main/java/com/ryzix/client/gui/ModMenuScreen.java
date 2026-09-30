@@ -6,8 +6,8 @@ import com.ryzix.client.modules.OreESP;
 import com.ryzix.client.modules.PlayerESP;
 import com.ryzix.client.modules.StorageESP;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.LiteralText;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -76,7 +76,7 @@ public class ModMenuScreen extends Screen {
     private int hoveredIdx = -1;
 
     public ModMenuScreen(Screen parent, boolean playIntro) {
-        super(new LiteralText("RyzixClient"));
+        super(Text.literal("RyzixClient"));
         this.parent = parent;
 
         modules.add(new Module(
@@ -102,7 +102,7 @@ public class ModMenuScreen extends Screen {
         modules.add(new Module(
             new Identifier("ryzixclient", "textures/gui/icons/ore.png"),
             "OreESP", "Highlight ores \u00BB Settings",
-            () -> { if (this.client != null) this.client.openScreen(new OreESPScreen(this)); },
+            () -> { if (this.client != null) this.client.setScreen(new OreESPScreen(this)); },
             null, true));
     }
 
@@ -128,77 +128,67 @@ public class ModMenuScreen extends Screen {
         panelY = (this.height - panelH) / 2;
     }
 
-    private void drawText(MatrixStack m, String t, int x, int y, int color) {
-        this.textRenderer.drawWithShadow(m, t, (float) x, (float) y, color);
+    private void drawText(DrawContext m, String t, int x, int y, int color) {
+        m.drawText(this.textRenderer, t, x, y, color, true);
     }
 
-    private void drawTextCenter(MatrixStack m, String t, int cx, int y, int color) {
+    private void drawTextCenter(DrawContext m, String t, int cx, int y, int color) {
         int w = this.textRenderer.getWidth(t);
-        this.textRenderer.drawWithShadow(m, t, (float)(cx - w / 2), (float) y, color);
+        m.drawText(this.textRenderer, t, cx - w / 2, y, color, true);
     }
 
-    private void enableScissor(int x, int y, int w, int h) {
-        double scale = this.client.getWindow().getScaleFactor();
-        int screenH = this.client.getWindow().getFramebufferHeight();
-        GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        GL11.glScissor(
-            (int)(x * scale),
-            (int)(screenH - (y + h) * scale),
-            (int)(w * scale),
-            (int)(h * scale)
-        );
+    private void enableScissor(DrawContext ctx, int x, int y, int w, int h) {
+        ctx.enableScissor(x, y, x + w, y + h);
     }
 
-    private void disableScissor() {
-        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+    private void disableScissor(DrawContext ctx) {
+        ctx.disableScissor();
     }
 
     @Override
-    public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
         long elapsed = Util.getMeasuringTimeMs() - openTime;
 
         // ── INTRO ANIMATION ────────────────────────────────────────────
         if (elapsed < 600) {
             float alpha = elapsed > 400 ? 1f - ((elapsed - 400) / 200f) : 1f;
             int bgA = (int)(alpha * 255);
-            fill(matrices, 0, 0, this.width, this.height, (bgA << 24) | 0x050505);
+            matrices.fill(0, 0, this.width, this.height, (bgA << 24) | 0x050505);
 
             RenderSystem.enableBlend();
-            RenderSystem.color4f(1f, 1f, 1f, alpha);
+            matrices.setShaderColor(1f, 1f, 1f, alpha);
             if (this.client != null) {
-                this.client.getTextureManager().bindTexture(LOGO);
                 int ls = 64;
                 int lx = (this.width - ls) / 2;
                 int ly = (this.height - ls) / 2 - 20;
-                drawTexture(matrices, lx, ly, 0f, 0f, ls, ls, ls, ls);
+                matrices.drawTexture(LOGO, lx, ly, 0f, 0f, ls, ls, ls, ls);
 
                 int bw = 140, bh = 3;
                 int bx = (this.width - bw) / 2;
                 int by = ly + ls + 25;
                 float prog = Math.min(1f, elapsed / 400f);
-                fill(matrices, bx, by, bx + bw, by + bh, (bgA << 24) | 0x222222);
-                fill(matrices, bx, by, bx + (int)(bw * prog), by + bh, (bgA << 24) | 0xFFFD1523);
+                matrices.fill(bx, by, bx + bw, by + bh, (bgA << 24) | 0x222222);
+                matrices.fill(bx, by, bx + (int)(bw * prog), by + bh, (bgA << 24) | 0xFFFD1523);
             }
-            RenderSystem.color4f(1f, 1f, 1f, 1f);
+            matrices.setShaderColor(1f, 1f, 1f, 1f);
             RenderSystem.disableBlend();
             return;
         }
 
         // ── BACKGROUND DIM ─────────────────────────────────────────────
-        fill(matrices, 0, 0, this.width, this.height, 0x40000000);
+        matrices.fill(0, 0, this.width, this.height, 0x40000000);
 
         // ── PANEL BACKGROUND ───────────────────────────────────────────
-        fill(matrices, panelX, panelY, panelX + PANEL_W, panelY + panelH, BG);
+        matrices.fill(panelX, panelY, panelX + PANEL_W, panelY + panelH, BG);
 
         // ── HEADER ─────────────────────────────────────────────────────
-        fill(matrices, panelX, panelY, panelX + PANEL_W, panelY + 3, ACCENT);
-        fill(matrices, panelX, panelY + 3, panelX + PANEL_W, panelY + HEADER_H, PANEL);
+        matrices.fill(panelX, panelY, panelX + PANEL_W, panelY + 3, ACCENT);
+        matrices.fill(panelX, panelY + 3, panelX + PANEL_W, panelY + HEADER_H, PANEL);
 
         RenderSystem.enableBlend();
-        RenderSystem.color4f(1f, 1f, 1f, 1f);
+        matrices.setShaderColor(1f, 1f, 1f, 1f);
         if (this.client != null) {
-            this.client.getTextureManager().bindTexture(LOGO);
-            drawTexture(matrices, panelX + 12, panelY + 12, 0f, 0f, 24, 24, 24, 24);
+            matrices.drawTexture(LOGO, panelX + 12, panelY + 12, 0f, 0f, 24, 24, 24, 24);
         }
         RenderSystem.disableBlend();
 
@@ -208,14 +198,14 @@ public class ModMenuScreen extends Screen {
         // Customize button
         int custX = panelX + PANEL_W - 85, custY = panelY + 14;
         boolean custHov = inBox(mouseX, mouseY, custX, custY, 75, 20);
-        fill(matrices, custX, custY, custX + 75, custY + 20, custHov ? ACCENT : 0xFF222222);
+        matrices.fill(custX, custY, custX + 75, custY + 20, custHov ? ACCENT : 0xFF222222);
         drawTextCenter(matrices, "Customize", custX + 37, custY + 6, WHITE);
 
-        fill(matrices, panelX, panelY + HEADER_H, panelX + PANEL_W, panelY + HEADER_H + 1, DIVIDER);
+        matrices.fill(panelX, panelY + HEADER_H, panelX + PANEL_W, panelY + HEADER_H + 1, DIVIDER);
 
         // ── ROWS (scissor-clipped, scrollable) ─────────────────────────
         int rowsAreaY = panelY + HEADER_H + 1;
-        enableScissor(panelX, rowsAreaY, PANEL_W, visibleRowsH);
+        enableScissor(matrices, panelX, rowsAreaY, PANEL_W, visibleRowsH);
 
         hoveredIdx = -1;
         int rowY = rowsAreaY - scrollOffset;
@@ -231,7 +221,7 @@ public class ModMenuScreen extends Screen {
                 if (hov) hoveredIdx = i;
             }
 
-            fill(matrices, panelX, rowY, panelX + PANEL_W, rowY + ROW_H, hov ? PANEL_HOV : BG);
+            matrices.fill(panelX, rowY, panelX + PANEL_W, rowY + ROW_H, hov ? PANEL_HOV : BG);
 
             boolean on = mod.enabled != null && mod.enabled.getAsBoolean();
             float target = on ? 1f : 0f;
@@ -240,18 +230,17 @@ public class ModMenuScreen extends Screen {
             // Left accent bar
             if (mod.anim > 0.01f) {
                 int sh = (int)(ROW_H * mod.anim);
-                fill(matrices, panelX, rowY + (ROW_H - sh), panelX + 3, rowY + ROW_H, ACCENT);
+                matrices.fill(panelX, rowY + (ROW_H - sh), panelX + 3, rowY + ROW_H, ACCENT);
             }
 
             int cy = rowY + ROW_H / 2;
 
             // Icon box
-            fill(matrices, panelX + 14, cy - 11, panelX + 36, cy + 11, on ? ACCENT : 0xFF222222);
+            matrices.fill(panelX + 14, cy - 11, panelX + 36, cy + 11, on ? ACCENT : 0xFF222222);
             RenderSystem.enableBlend();
-            RenderSystem.color4f(1f, 1f, 1f, 1f);
+            matrices.setShaderColor(1f, 1f, 1f, 1f);
             if (this.client != null) {
-                this.client.getTextureManager().bindTexture(mod.icon);
-                drawTexture(matrices, panelX + 17, cy - 8, 0f, 0f, 16, 16, 16, 16);
+                matrices.drawTexture(mod.icon, panelX + 17, cy - 8, 0f, 0f, 16, 16, 16, 16);
             }
             RenderSystem.disableBlend();
 
@@ -265,40 +254,39 @@ public class ModMenuScreen extends Screen {
                 // Toggle pill
                 int pillX = panelX + PANEL_W - 52;
                 int pillY = cy - 7;
-                fill(matrices, pillX, pillY, pillX + 34, pillY + 14, on ? ACCENT : 0xFF333333);
+                matrices.fill(pillX, pillY, pillX + 34, pillY + 14, on ? ACCENT : 0xFF333333);
                 int dotX = (int)(pillX + 2 + 20 * mod.anim);
-                fill(matrices, dotX, pillY + 2, dotX + 10, pillY + 12, WHITE);
+                matrices.fill(dotX, pillY + 2, dotX + 10, pillY + 12, WHITE);
             }
 
-            fill(matrices, panelX + 14, rowY + ROW_H - 1, panelX + PANEL_W - 14, rowY + ROW_H, DIVIDER);
+            matrices.fill(panelX + 14, rowY + ROW_H - 1, panelX + PANEL_W - 14, rowY + ROW_H, DIVIDER);
             rowY += ROW_H;
         }
 
-        disableScissor();
+        disableScissor(matrices);
 
         // ── SCROLLBAR ──────────────────────────────────────────────────
         if (maxScroll > 0) {
             int sbX = panelX + PANEL_W - SCROLLBAR_W - 2;
             int sbY = rowsAreaY + 2;
             int sbH = visibleRowsH - 4;
-            fill(matrices, sbX, sbY, sbX + SCROLLBAR_W, sbY + sbH, SCROLLBAR);
+            matrices.fill(sbX, sbY, sbX + SCROLLBAR_W, sbY + sbH, SCROLLBAR);
 
             int thumbH = Math.max(16, (int)((float) visibleRowsH / totalRowsH * sbH));
             int thumbY = sbY + (int)((float) scrollOffset / maxScroll * (sbH - thumbH));
-            fill(matrices, sbX, thumbY, sbX + SCROLLBAR_W, thumbY + thumbH, SCROLLBAR_THUMB);
+            matrices.fill(sbX, thumbY, sbX + SCROLLBAR_W, thumbY + thumbH, SCROLLBAR_THUMB);
         }
 
         // ── FOOTER ─────────────────────────────────────────────────────
-        fill(matrices, panelX, panelY + panelH - FOOTER_H, panelX + PANEL_W, panelY + panelH, PANEL);
+        matrices.fill(panelX, panelY + panelH - FOOTER_H, panelX + PANEL_W, panelY + panelH, PANEL);
         // Fade-shadow on bottom of rows area so cutoff looks clean
-        fill(matrices, panelX, panelY + panelH - FOOTER_H - 8, panelX + PANEL_W, panelY + panelH - FOOTER_H, 0x60000000);
+        matrices.fill(panelX, panelY + panelH - FOOTER_H - 8, panelX + PANEL_W, panelY + panelH - FOOTER_H, 0x60000000);
         drawTextCenter(matrices, "Press R or ESC to close", panelX + PANEL_W / 2, panelY + panelH - 18, GREY);
 
-        super.render(matrices, mouseX, mouseY, delta);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double amount) {
         if (maxScroll > 0) {
             scrollOffset = clamp(scrollOffset - (int)(amount * 12), 0, maxScroll);
             return true;
@@ -312,7 +300,7 @@ public class ModMenuScreen extends Screen {
 
         // Customize button
         if (button == 0 && inBox((int)mx, (int)my, panelX + PANEL_W - 85, panelY + 14, 75, 20)) {
-            this.client.openScreen(new HudEditScreen(this));
+            this.client.setScreen(new HudEditScreen(this));
             return true;
         }
 
@@ -356,17 +344,17 @@ public class ModMenuScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (Util.getMeasuringTimeMs() - openTime < 600) return false;
-        if (keyCode == 82 || keyCode == 256) { this.onClose(); return true; }
+        if (keyCode == 82 || keyCode == 256) { this.close(); return true; }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
-    public void onClose() {
-        if (this.client != null) this.client.openScreen(parent);
+    public void close() {
+        if (this.client != null) this.client.setScreen(parent);
     }
 
     @Override
-    public boolean isPauseScreen() { return false; }
+    public boolean shouldPause() { return false; }
 
     private static boolean inBox(int mx, int my, int x, int y, int w, int h) {
         return mx >= x && mx <= x + w && my >= y && my < y + h;

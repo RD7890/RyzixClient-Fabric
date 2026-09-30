@@ -2,8 +2,8 @@ package com.ryzix.client.gui;
 
 import com.ryzix.client.modules.OreESP;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.LiteralText;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
 public class OreESPScreen extends Screen {
@@ -56,7 +56,7 @@ public class OreESPScreen extends Screen {
     }
 
     public OreESPScreen(Screen parent) {
-        super(new LiteralText("OreESP"));
+        super(Text.literal("OreESP"));
         this.parent = parent;
     }
 
@@ -72,34 +72,34 @@ public class OreESPScreen extends Screen {
         }
     }
 
-    private void drawText(MatrixStack m, String t, int x, int y, int color) {
-        this.textRenderer.drawWithShadow(m, t, (float) x, (float) y, color);
+    private void drawText(DrawContext m, String t, int x, int y, int color) {
+        m.drawText(this.textRenderer, t, x, y, color, true);
     }
 
-    private void drawTextCenter(MatrixStack m, String t, int cx, int y, int color) {
+    private void drawTextCenter(DrawContext m, String t, int cx, int y, int color) {
         int w = this.textRenderer.getWidth(t);
-        this.textRenderer.drawWithShadow(m, t, (float)(cx - w / 2), (float) y, color);
+        m.drawText(this.textRenderer, t, cx - w / 2, y, color, true);
     }
 
     @Override
-    public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
-        fill(matrices, 0, 0, this.width, this.height, 0x60000000);
+    public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
+        matrices.fill(0, 0, this.width, this.height, 0x60000000);
 
         // Main panel
-        fill(matrices, panelX, panelY, panelX + panelW, panelY + panelH, BG);
+        matrices.fill(panelX, panelY, panelX + panelW, panelY + panelH, BG);
 
         // Header
-        fill(matrices, panelX, panelY, panelX + panelW, panelY + 3, ACCENT);
-        fill(matrices, panelX, panelY + 3, panelX + panelW, panelY + HEADER_H, PANEL);
+        matrices.fill(panelX, panelY, panelX + panelW, panelY + 3, ACCENT);
+        matrices.fill(panelX, panelY + 3, panelX + panelW, panelY + HEADER_H, PANEL);
 
         // Back arrow
-        fill(matrices, panelX + 10, panelY + 13, panelX + 28, panelY + 31, ACCENT);
+        matrices.fill(panelX + 10, panelY + 13, panelX + 28, panelY + 31, ACCENT);
         drawTextCenter(matrices, "<", panelX + 19, panelY + 18, WHITE);
 
         drawText(matrices, "OreESP Settings", panelX + 36, panelY + 14, WHITE);
         drawText(matrices, "Press Z to quick toggle", panelX + 36, panelY + 25, GREY);
 
-        fill(matrices, panelX, panelY + HEADER_H, panelX + panelW, panelY + HEADER_H + 1, DIVIDER);
+        matrices.fill(panelX, panelY + HEADER_H, panelX + panelW, panelY + HEADER_H + 1, DIVIDER);
 
         hoveredIdx = -1;
 
@@ -110,18 +110,18 @@ public class OreESPScreen extends Screen {
                          && mouseY >= masterY && mouseY < masterY + MASTER_H;
         if (masterHov) hoveredIdx = -2;
 
-        fill(matrices, panelX, masterY, panelX + panelW, masterY + MASTER_H, masterHov ? PANEL_HOV : PANEL);
+        matrices.fill(panelX, masterY, panelX + panelW, masterY + MASTER_H, masterHov ? PANEL_HOV : PANEL);
 
         // Master left accent bar
         float masterTarget = masterOn ? 1f : 0f;
         masterAnim += (masterTarget - masterAnim) * Math.min(1f, delta * 0.2f);
         if (masterAnim > 0.01f) {
             int sh = (int)(MASTER_H * masterAnim);
-            fill(matrices, panelX, masterY + (MASTER_H - sh), panelX + 3, masterY + MASTER_H, ACCENT);
+            matrices.fill(panelX, masterY + (MASTER_H - sh), panelX + 3, masterY + MASTER_H, ACCENT);
         }
 
         int mcy = masterY + MASTER_H / 2;
-        fill(matrices, panelX + 14, mcy - 11, panelX + 36, mcy + 11, masterOn ? ACCENT : 0xFF222222);
+        matrices.fill(panelX + 14, mcy - 11, panelX + 36, mcy + 11, masterOn ? ACCENT : 0xFF222222);
         drawTextCenter(matrices, "O", panelX + 25, mcy - 4, WHITE);
 
         drawText(matrices, "OreESP", panelX + 46, mcy - 9, WHITE);
@@ -130,11 +130,11 @@ public class OreESPScreen extends Screen {
         // Master toggle pill
         int mpX = panelX + panelW - 50;
         int mpY = mcy - 7;
-        fill(matrices, mpX, mpY, mpX + 32, mpY + 14, masterOn ? ACCENT : 0xFF333333);
+        matrices.fill(mpX, mpY, mpX + 32, mpY + 14, masterOn ? ACCENT : 0xFF333333);
         int mdotX = (int)(mpX + 2 + 18 * masterAnim);
-        fill(matrices, mdotX, mpY + 2, mdotX + 10, mpY + 10, WHITE);
+        matrices.fill(mdotX, mpY + 2, mdotX + 10, mpY + 10, WHITE);
 
-        fill(matrices, panelX + 10, masterY + MASTER_H - 1, panelX + panelW - 10, masterY + MASTER_H, DIVIDER);
+        matrices.fill(panelX + 10, masterY + MASTER_H - 1, panelX + panelW - 10, masterY + MASTER_H, DIVIDER);
 
         // ── INDIVIDUAL ORE ROWS ──────────────────────────────────────
         int rowY = masterY + MASTER_H;
@@ -146,20 +146,20 @@ public class OreESPScreen extends Screen {
                        && mouseY >= rowY && mouseY < rowY + ROW_H;
             if (hov) hoveredIdx = i;
 
-            fill(matrices, panelX, rowY, panelX + panelW, rowY + ROW_H, hov ? PANEL_HOV : BG);
+            matrices.fill(panelX, rowY, panelX + panelW, rowY + ROW_H, hov ? PANEL_HOV : BG);
 
             // Left accent bar
             float target = on ? 1f : 0f;
             pillAnim[i] += (target - pillAnim[i]) * Math.min(1f, delta * 0.2f);
             if (pillAnim[i] > 0.01f) {
                 int sh = (int)(ROW_H * pillAnim[i]);
-                fill(matrices, panelX, rowY + (ROW_H - sh), panelX + 3, rowY + ROW_H, ACCENT);
+                matrices.fill(panelX, rowY + (ROW_H - sh), panelX + 3, rowY + ROW_H, ACCENT);
             }
 
             int centerY = rowY + ROW_H / 2;
 
             // Ore color square
-            fill(matrices, panelX + 14, centerY - 10, panelX + 34, centerY + 10, on ? ore.color : 0xFF333333);
+            matrices.fill(panelX + 14, centerY - 10, panelX + 34, centerY + 10, on ? ore.color : 0xFF333333);
 
             drawText(matrices, ore.name, panelX + 44, centerY - 9, WHITE);
             drawText(matrices, ore.desc, panelX + 44, centerY + 3, GREY);
@@ -167,19 +167,18 @@ public class OreESPScreen extends Screen {
             // Toggle pill
             int pillX = panelX + panelW - 50;
             int pillY = centerY - 7;
-            fill(matrices, pillX, pillY, pillX + 32, pillY + 14, on ? ACCENT : 0xFF333333);
+            matrices.fill(pillX, pillY, pillX + 32, pillY + 14, on ? ACCENT : 0xFF333333);
             int dotX = (int)(pillX + 2 + 18 * pillAnim[i]);
-            fill(matrices, dotX, pillY + 2, dotX + 10, pillY + 10, WHITE);
+            matrices.fill(dotX, pillY + 2, dotX + 10, pillY + 10, WHITE);
 
-            fill(matrices, panelX + 10, rowY + ROW_H - 1, panelX + panelW - 10, rowY + ROW_H, DIVIDER);
+            matrices.fill(panelX + 10, rowY + ROW_H - 1, panelX + panelW - 10, rowY + ROW_H, DIVIDER);
             rowY += ROW_H;
         }
 
         // Footer
-        fill(matrices, panelX, panelY + panelH - FOOTER_H, panelX + panelW, panelY + panelH, PANEL);
+        matrices.fill(panelX, panelY + panelH - FOOTER_H, panelX + panelW, panelY + panelH, PANEL);
         drawTextCenter(matrices, "Press ESC to go back", panelX + panelW / 2, panelY + panelH - 15, GREY);
 
-        super.render(matrices, mouseX, mouseY, delta);
     }
 
     @Override
@@ -187,7 +186,7 @@ public class OreESPScreen extends Screen {
         if (btn == 0) {
             // Back arrow
             if (mx >= panelX + 10 && mx <= panelX + 28 && my >= panelY + 13 && my <= panelY + 31) {
-                this.onClose();
+                this.close();
                 return true;
             }
             // Master toggle
@@ -208,21 +207,21 @@ public class OreESPScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == 256 || keyCode == 82) {
-            this.onClose();
+            this.close();
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
-    public void onClose() {
+    public void close() {
         if (this.client != null) {
-            this.client.openScreen(parent);
+            this.client.setScreen(parent);
         }
     }
 
     @Override
-    public boolean isPauseScreen() {
+    public boolean shouldPause() {
         return false;
     }
 }
