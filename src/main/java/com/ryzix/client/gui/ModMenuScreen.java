@@ -136,6 +136,8 @@ public class ModMenuScreen extends Screen {
 
     @Override
     protected void init() {
+        Ui.resetScale();
+        Ui.S(this.height); // compute FHD-aware scale based on actual screen height
         pw = Ui.panelW(this.width);
         ph = Ui.panelH(this.height);
         px = (this.width - pw) / 2;

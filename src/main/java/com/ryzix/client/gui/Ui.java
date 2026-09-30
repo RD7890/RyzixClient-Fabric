@@ -15,8 +15,18 @@ import net.minecraft.util.Identifier;
 public final class Ui {
     private Ui() {}
 
-    // CSS px -> GUI px
-    public static final float S = 0.6f;
+    // CSS px -> GUI px: dynamic based on actual screen height for FHD quality
+    // Clamps between 0.5 (small phone) and 1.4 (large/tablet)
+    private static float _S = 0f;
+    public static float S(int screenH) {
+        if (_S == 0f) _S = Math.max(0.5f, Math.min(1.4f, screenH / 540f));
+        return _S;
+    }
+    /** Call once per resize to refresh the cached scale. */
+    public static void resetScale() { _S = 0f; }
+    /** Quick accessor - uses last known scale, defaults to 0.85 if not yet computed. */
+    public static float S() { return _S == 0f ? 0.85f : _S; }
+    public static final float S = 0.85f; // legacy fallback, prefer S(screenH)
 
     // Palette (from the mockup)
     public static final int ACCENT     = 0xFFFD1523;
@@ -152,9 +162,9 @@ public final class Ui {
         RenderSystem.disableBlend();
     }
 
-    /** White 32x32 icon tinted by alpha (mockup: opacity .55, 1.0 on hover). */
+    /** White icon tinted by alpha (mockup: opacity .55, 1.0 on hover). */
     public static void icon(DrawContext c, String name, int x, int y, int size, float a) {
-        tex(c, icon(name), x, y, size, 32, a);
+        tex(c, icon(name), x, y, size, 64, a);
     }
 
     // ---------------------------------------------------------------- text

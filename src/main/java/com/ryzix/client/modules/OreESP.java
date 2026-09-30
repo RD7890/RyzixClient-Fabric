@@ -24,6 +24,7 @@ public class OreESP {
     public static boolean showGold    = true;
     public static boolean showLapis   = true;
     public static boolean showDiamond = true;
+    public static boolean showCoal    = true;
 
     // Scan config: 1 chunk (player's), once every 3s
     private static final long SCAN_INTERVAL_MS = 3000L;
@@ -33,7 +34,8 @@ public class OreESP {
         IRON(0.75f, 0.75f, 0.75f),    // light grey
         GOLD(1.0f, 0.85f, 0.0f),      // yellow
         LAPIS(0.1f, 0.3f, 0.9f),      // blue
-        DIAMOND(0.0f, 0.9f, 0.9f);    // cyan
+        DIAMOND(0.0f, 0.9f, 0.9f),    // cyan
+        COAL(0.15f, 0.15f, 0.15f);    // near-black
 
         final float r, g, b;
         OreType(float r, float g, float b) { this.r = r; this.g = g; this.b = b; }
@@ -94,10 +96,11 @@ public class OreESP {
         // Render only cached ores; toggles are checked live so turning one off hides it instantly
         for (CachedOre ore : cache) {
             OreType t = ore.type;
-            if (t == OreType.IRON && !showIron) continue;
-            if (t == OreType.GOLD && !showGold) continue;
-            if (t == OreType.LAPIS && !showLapis) continue;
+            if (t == OreType.IRON    && !showIron)    continue;
+            if (t == OreType.GOLD    && !showGold)    continue;
+            if (t == OreType.LAPIS   && !showLapis)   continue;
             if (t == OreType.DIAMOND && !showDiamond) continue;
+            if (t == OreType.COAL    && !showCoal)    continue;
             RenderUtils.drawBox(matrices, ore.box, t.r, t.g, t.b, 0.85f);
         }
     }
@@ -145,6 +148,7 @@ public class OreESP {
         if (block == Blocks.GOLD_ORE    || block == Blocks.DEEPSLATE_GOLD_ORE)    return OreType.GOLD;
         if (block == Blocks.LAPIS_ORE   || block == Blocks.DEEPSLATE_LAPIS_ORE)   return OreType.LAPIS;
         if (block == Blocks.DIAMOND_ORE || block == Blocks.DEEPSLATE_DIAMOND_ORE) return OreType.DIAMOND;
+        if (block == Blocks.COAL_ORE    || block == Blocks.DEEPSLATE_COAL_ORE)    return OreType.COAL;
         return null;
     }
 }

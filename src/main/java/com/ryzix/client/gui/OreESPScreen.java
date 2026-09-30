@@ -30,6 +30,7 @@ public class OreESPScreen extends Screen {
         new OreEntry("Gold Ore",     0xFFFFD700, () -> OreESP.showGold,    v -> OreESP.showGold = v),
         new OreEntry("Iron Ore",     0xFFD8AF93, () -> OreESP.showIron,    v -> OreESP.showIron = v),
         new OreEntry("Lapis Lazuli", 0xFF345BEB, () -> OreESP.showLapis,   v -> OreESP.showLapis = v),
+        new OreEntry("Coal Ore",     0xFF333333, () -> OreESP.showCoal,    v -> OreESP.showCoal = v),
     };
 
     private final Screen parent;
