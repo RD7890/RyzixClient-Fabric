@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RyzixClient - Legit GUI Mockup</title>
+    <style>
+        @font-face {
+            font-family: 'RyzixFont';
+            src: url('assets/RyzixFont.otf') format('opentype');
+        }
+        
+        :root {
+            --accent: #FD1523;
+            --bg-color: rgba(0, 0, 0, 0.92);
+            --card-bg: rgba(20, 20, 20, 0.6);
+            --card-hover: rgba(35, 35, 35, 0.8);
+            --text-main: #E0E0E0;
+            --text-muted: #888888;
+            --font: 'RyzixFont', sans-serif;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-image: url('https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/master/assets/minecraft/textures/gui/options_background.png');
+            background-size: cover;
+            font-family: var(--font);
+            overflow: hidden; user-select: none; -webkit-user-select: none;
+        }
+
+        .bg-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Main Window */
+        #main-gui {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 850px; max-width: 95vw; height: 600px; max-height: 85vh;
+            background: var(--bg-color); border-radius: 6px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.03);
+            overflow: hidden;
+            
+            /* Opening Animation handled by splash screen now */
+        }
+
+        /* Splash Screen */
+        #splash-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #050505; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            animation: splashFadeOut 0.4s 1.5s forwards; /* Fades out over 0.4s after a 1.5s delay */
+            pointer-events: none;
+        }
+        .splash-logo {
+            width: 64px; height: 64px; image-rendering: pixelated; margin-bottom: 25px;
+            border-radius: 8px;
+        }
+        .splash-bar-bg {
+            width: 140px; height: 3px; background: #222222;
+        }
+        .splash-bar-fill {
+            height: 100%; background: var(--accent); width: 0%;
+            animation: splashLoad 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards; /* Fills over 1.5s */
+        }
+
+        @keyframes splashLoad {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        @keyframes splashFadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; visibility: hidden; }
+        }
+
+        /* Stacked Views for Clean Fade-Slide Animations */
+        #view-wrapper {
+            width: 100%; height: 100%; position: relative;
+        }
+        
+        #main-view, #sub-view {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            padding: 15px 20px; box-sizing: border-box;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        
+        #sub-view {
+            display: none;
+        }
+
+        /* Classes for View Sliding */
+        .view-out-left { opacity: 0 !important; transform: translateX(-20px) !important; pointer-events: none; }
+        .view-out-right { opacity: 0 !important; transform: translateX(20px) !important; pointer-events: none; }
+        .view-in-left { opacity: 0 !important; transform: translateX(-20px) !important; }
+        .view-in-right { opacity: 0 !important; transform: translateX(20px) !important; }
+
+        /* ---------------- MAIN VIEW ---------------- */
+        
+        .top-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; flex-shrink: 0;
+        }
+        .header-logo {
+            width: 22px; height: 22px; image-rendering: pixelated; border-radius: 4px;
+        }
+        .top-icons {
+            display: flex; gap: 15px; color: var(--text-muted); font-size: 14px;
+        }
+        .top-icons i { cursor: pointer; transition: 0.2s; }
+        .top-icons i:hover { color: var(--text-main); }
+
+        .nav-row {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .tabs { display: flex; gap: 20px; }
+        .tab {
+            color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+            text-transform: uppercase; cursor: pointer; transition: 0.2s; position: relative;
+        }
+        .tab:hover { color: var(--text-main); }
+        .tab.active { color: var(--text-main); }
+        .tab.active::after {
+            content: ''; position: absolute; bottom: -6px; left: 0; width: 100%;
+            height: 1px; background: var(--text-main); border-bottom: 1px dashed var(--text-main);
+        }
+
+        .search-bar {
+            background: rgba(20, 20, 20, 0.6); border-radius: 4px; border: 1px solid rgba(255,255,255,0.03);
+            padding: 6px 12px; display: flex; align-items: center; width: 180px;
+        }
+        .search-bar input {
+            background: none; border: none; color: var(--text-main); font-family: var(--font);
+            font-size: 12px; outline: none; width: 100%;
+        }
+        .search-bar input::placeholder { color: var(--text-muted); }
+        .search-bar i { color: var(--text-muted); font-size: 11px; margin-left: 8px; }
+
+        /* Grid Animations */
+        .modules-container {
+            flex-grow: 1; overflow-y: auto; 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px; align-content: start; padding-right: 5px; margin-top: 5px;
+            
+            /* Category switch animation */
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .modules-container.switching-out-left { opacity: 0; transform: translateX(-20px); pointer-events: none; }
+        .modules-container.switching-out-right { opacity: 0; transform: translateX(20px); pointer-events: none; }
+        .modules-container.switching-in-right { opacity: 0; transform: translateX(20px); }
+        .modules-container.switching-in-left { opacity: 0; transform: translateX(-20px); }
+
+        .modules-container::-webkit-scrollbar, .sub-settings-container::-webkit-scrollbar { width: 4px; }
+        .modules-container::-webkit-scrollbar-thumb, .sub-settings-container::-webkit-scrollbar-thumb { 
+            background: rgba(255,255,255,0.1); border-radius: 4px; 
+        }
+
+        .module-card {
+            background: var(--card-bg); border-radius: 4px; border: 1px solid rgba(255,255,255,0.02);
+            height: 90px; padding: 12px; display: flex; flex-direction: column;
+            transition: 0.2s; cursor: pointer; position: relative;
+        }
+        .module-card:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.05); }
+
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .module-icon { color: var(--text-muted); font-size: 15px; }
+        .card-actions { display: flex; align-items: center; gap: 8px; }
+        .module-name { margin-top: auto; color: var(--text-main); font-size: 14px; font-weight: 500; }
+        
+        .arrow-btn { color: var(--text-muted); font-size: 14px; padding: 0 4px; transition: 0.2s; cursor: pointer; }
+        .arrow-btn:hover { color: var(--text-main); }
+
+        /* ---------------- SUB VIEW ---------------- */
+
+        .sub-header {
+            display: flex; align-items: center; gap: 15px; margin-bottom: 20px; flex-shrink: 0;
+        }
+        .back-btn {
+            color: var(--text-muted); font-size: 18px; cursor: pointer; transition: 0.2s;
+            padding: 5px; margin-left: -5px;
+        }
+        .back-btn:hover { color: var(--text-main); }
+        .sub-title { color: var(--text-main); font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 10px;}
+        .sub-title i { color: var(--text-muted); font-size: 18px; }
+
+        .master-toggle-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255,255,255,0.03); padding: 16px 20px; border-radius: 6px;
+            margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0;
+        }
+        .master-toggle-label { color: var(--text-main); font-size: 15px; font-weight: 600; }
+        
+        .sub-settings-container {
+            display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex-grow: 1; padding-right: 5px;
+        }
+        .setting-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 18px; background: rgba(20,20,20,0.6); border-radius: 4px; border: 1px solid rgba(255,255,255,0.02);
+        }
+        .setting-label { color: var(--text-main); font-size: 13px; display: flex; align-items: center; gap: 10px; }
+        .color-preview { width: 12px; height: 12px; border-radius: 50%; }
+
+        /* Toggle Switch */
+        .vape-switch {
+            width: 28px; height: 14px; background: rgba(10,10,10,0.6); 
+            border-radius: 7px; position: relative; transition: 0.3s; 
+            border: 1px solid rgba(255,255,255,0.05); cursor: pointer;
+        }
+        .vape-switch.active { background: var(--accent); border-color: var(--accent); }
+        .vape-switch::after {
+            content: ''; position: absolute; top: 50%; left: 2px;
+            width: 10px; height: 10px; background: #666; border-radius: 50%;
+            transition: 0.3s; transform: translateY(-50%);
+        }
+        .vape-switch.active::after { 
+            transform: translate(14px, -50%); background: #FFFFFF;
+        }
+
+        .hidden { display: none !important; }
+    
+        /* PNG Icon Styling */
+        .icon-img {
+            width: 1em; height: 1em; object-fit: contain; vertical-align: middle;
+            opacity: 0.55; transition: 0.2s; cursor: pointer;
+        }
+        .icon-img:hover { opacity: 1; }
+        .arrow-btn { width: 14px; height: 14px; padding: 0 4px; }
+        .module-icon { width: 15px; height: 15px; }
+        .top-icons .icon-img { width: 14px; height: 14px; margin-left: 15px; }
+        .search-bar .icon-img { width: 11px; height: 11px; margin-left: 8px; cursor: default; }
+        .back-btn { width: 18px; height: 18px; padding: 5px; margin-left: -5px; }
+        .sub-title .icon-img { width: 18px; height: 18px; margin-right: 10px; }
+</style>
+</head>
+<body>
+
+    <div class="bg-overlay"></div>
+
+    <!-- Authentic ModMenu Loading Splash (Fullscreen) -->
+    <div id="splash-screen">
+        <img src="assets/logo.png" class="splash-logo" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='">
+        <div class="splash-bar-bg">
+            <div class="splash-bar-fill"></div>
+        </div>
+    </div>
+
+    <div id="main-gui">
+        
+        <div id="view-wrapper">
+            
+            <!-- MAIN GRID VIEW -->
+            <div id="main-view">
+                <div class="top-header">
+                    <img src="assets/logo.png" class="header-logo" alt="Logo" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='">
+                    <div class="top-icons">
+                        <img src="assets/icons/rotate-right.png" id="reload-btn" class="icon-img top-btn" title="Replay Animation">
+                        <img src="assets/icons/up-right-and-down-left-from-center.png" id="fullscreen-btn" class="icon-img top-btn">
+                    </div>
+                </div>
+
+                <div class="nav-row">
+                    <div class="tabs">
+                        <div class="tab active">ALL</div>
+                        <div class="tab">VISUALS</div>
+                        <div class="tab">UTILITY</div>
+                    </div>
+                    
+                    <div class="search-bar">
+                        <input type="text" id="search-input" placeholder="Search mods">
+                        <img src="assets/icons/magnifying-glass.png" class="icon-img">
+                    </div>
+                </div>
+                
+                <div class="modules-container" id="modules-container">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- SUB MENU VIEW -->
+            <div id="sub-view">
+                <div class="sub-header">
+                    <img src="assets/icons/arrow-left.png" id="back-btn" class="icon-img back-btn">
+                    <div class="sub-title" id="sub-title">Module Name</div>
+                </div>
+
+                <div class="master-toggle-row">
+                    <span class="master-toggle-label">Enable Module</span>
+                    <div class="vape-switch" id="master-toggle"></div>
+                </div>
+
+                <div class="sub-settings-container" id="sub-settings-container">
+                    <!-- Injected when opened -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const modules = [
+            { id: 'storage', name: 'StorageESP', icon: 'fa-boxes-stacked', active: false, category: 'VISUALS' },
+            { id: 'player', name: 'PlayerESP', icon: 'fa-user', active: false, category: 'VISUALS' },
+            { id: 'fullbright', name: 'FullBright', icon: 'fa-sun', active: true, category: 'VISUALS' },
+            { id: 'chest', name: 'Chest Counter', icon: 'fa-box-open', active: false, category: 'UTILITY' },
+            { 
+                id: 'ore', name: 'OreESP', icon: 'fa-gem', active: true, hasSettings: true, category: 'VISUALS',
+                settings: [
+                    { name: 'Diamond Ore', color: '#00e5ff', active: true },
+                    { name: 'Ancient Debris', color: '#8b7355', active: true },
+                    { name: 'Gold Ore', color: '#ffd700', active: true },
+                    { name: 'Iron Ore', color: '#d8af93', active: false },
+                    { name: 'Lapis Lazuli', color: '#345beb', active: true }
+                ]
+            }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const fsBtn = document.getElementById('fullscreen-btn');
+            fsBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {});
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+
+            const container = document.getElementById('modules-container');
+            const mainView = document.getElementById('main-view');
+            const subView = document.getElementById('sub-view');
+            const backBtn = document.getElementById('back-btn');
+            
+            const subTitle = document.getElementById('sub-title');
+            const masterToggle = document.getElementById('master-toggle');
+            const subSettingsContainer = document.getElementById('sub-settings-container');
+
+            let currentActiveModule = null;
+
+            // Reload Button Logic (Replay Splash)
+            document.getElementById('reload-btn').addEventListener('click', () => {
+                const splash = document.getElementById('splash-screen');
+                const fill = splash.querySelector('.splash-bar-fill');
+                
+                // Reset CSS animations
+                splash.style.animation = 'none';
+                fill.style.animation = 'none';
+                
+                void splash.offsetWidth; // Force DOM reflow
+                
+                // Re-apply original CSS animations
+                splash.style.animation = '';
+                fill.style.animation = '';
+            });
+
+            // Go back to main grid (Sub -> Main) sequentially
+            backBtn.addEventListener('click', () => {
+                subView.classList.add('view-out-right'); // 1. Slide out right
+                
+                setTimeout(() => {
+                    subView.style.display = 'none';
+                    subView.classList.remove('view-out-right');
+                    
+                    mainView.style.display = 'flex';
+                    mainView.classList.add('view-in-left'); // Start offscreen left
+                    
+                    void mainView.offsetWidth; // Reflow
+                    
+                    mainView.classList.remove('view-in-left', 'view-out-left'); // 2. Slide in from left
+                    
+                    // Update grid toggle UI
+                    if (currentActiveModule) {
+                        const cardToggle = document.querySelector(`.module-card[data-id="${currentActiveModule.id}"] .toggle-main`);
+                        if (cardToggle) {
+                            if (currentActiveModule.active) cardToggle.classList.add('active');
+                            else cardToggle.classList.remove('active');
+                        }
+                    }
+                }, 200);
+            });
+
+            masterToggle.addEventListener('click', () => {
+                masterToggle.classList.toggle('active');
+                if (currentActiveModule) {
+                    currentActiveModule.active = masterToggle.classList.contains('active');
+                }
+            });
+
+            // Open submenu (Main -> Sub) sequentially
+            function openSubMenu(mod) {
+                currentActiveModule = mod;
+                subTitle.innerHTML = `<img src="assets/icons/${mod.icon.replace("fa-", "")}.png" class="icon-img"> ${mod.name}`;
+                
+                if (mod.active) masterToggle.classList.add('active');
+                else masterToggle.classList.remove('active');
+
+                subSettingsContainer.innerHTML = '';
+
+                if (mod.settings) {
+                    mod.settings.forEach(set => {
+                        const row = document.createElement('div');
+                        row.className = 'setting-row';
+                        row.innerHTML = `
+                            <div class="setting-label">
+                                <div class="color-preview" style="background: ${set.color}; box-shadow: 0 0 4px ${set.color}"></div>
+                                ${set.name}
+                            </div>
+                            <div class="vape-switch ${set.active ? 'active' : ''}"></div>
+                        `;
+                        const toggle = row.querySelector('.vape-switch');
+                        toggle.addEventListener('click', () => {
+                            toggle.classList.toggle('active');
+                            set.active = toggle.classList.contains('active');
+                        });
+                        subSettingsContainer.appendChild(row);
+                    });
+                }
+                
+                // 1. Slide out main grid left
+                mainView.classList.add('view-out-left');
+                
+                setTimeout(() => {
+                    mainView.style.display = 'none';
+                    
+                    subView.style.display = 'flex';
+                    subView.classList.add('view-in-right'); // Start offscreen right
+                    
+                    void subView.offsetWidth; // Reflow
+                    
+                    subView.classList.remove('view-in-right', 'view-out-right'); // 2. Slide in from right
+                }, 200);
+            }
+
+            modules.forEach(mod => {
+                const card = document.createElement('div');
+                card.className = 'module-card';
+                card.dataset.name = mod.name.toLowerCase();
+                card.dataset.id = mod.id;
+                card.dataset.category = mod.category;
+
+                card.innerHTML = `
+                    <div class="card-top">
+                        <img src="assets/icons/${mod.icon.replace("fa-", "")}.png" class="icon-img module-icon">
+                        <div class="card-actions">
+                            <div class="vape-switch toggle-main ${mod.active ? 'active' : ''}"></div>
+                            ${mod.hasSettings ? '<img src="assets/icons/chevron-right.png" class="icon-img arrow-btn">' : ''}
+                        </div>
+                    </div>
+                    <span class="module-name">${mod.name}</span>
+                `;
+
+                const toggleMain = card.querySelector('.toggle-main');
+                toggleMain.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    mod.active = !mod.active;
+                    if (mod.active) toggleMain.classList.add('active');
+                    else toggleMain.classList.remove('active');
+                });
+
+                if (mod.hasSettings) {
+                    const arrowBtn = card.querySelector('.arrow-btn');
+                    arrowBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openSubMenu(mod);
+                    });
+                }
+
+                card.addEventListener('click', () => {
+                    if (mod.hasSettings) {
+                        openSubMenu(mod);
+                    } else {
+                        mod.active = !mod.active;
+                        if (mod.active) toggleMain.classList.add('active');
+                        else toggleMain.classList.remove('active');
+                    }
+                });
+
+                container.appendChild(card);
+            });
+
+            // ESC Key Logic
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (subView.style.display === 'flex' && !subView.classList.contains('view-out-right')) {
+                        backBtn.click();
+                    } else if (mainView.style.display !== 'none') {
+                        const gui = document.getElementById('main-gui');
+                        gui.style.animation = 'none';
+                        gui.style.opacity = '0';
+                        gui.style.transform = 'translate(-50%, -45%)';
+                        gui.style.pointerEvents = 'none';
+                        document.querySelector('.bg-overlay').style.opacity = '0';
+                    }
+                }
+            });
+
+            // Search
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const activeTab = document.querySelector('.tab.active').innerText.trim();
+                const cards = container.querySelectorAll('.module-card');
+                
+                cards.forEach(card => {
+                    const matchesSearch = card.dataset.name.includes(term);
+                    const matchesTab = (activeTab === 'ALL') || (card.dataset.category === activeTab);
+                    
+                    if (matchesSearch && matchesTab) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+            });
+            
+            // Tab Clicking w/ Directional Slide Animation
+            const tabs = Array.from(document.querySelectorAll('.tab'));
+            tabs.forEach((tab, index) => {
+                tab.addEventListener('click', () => {
+                    if (tab.classList.contains('active')) return;
+                    
+                    const activeTab = document.querySelector('.tab.active');
+                    const activeIndex = tabs.indexOf(activeTab);
+                    const newIndex = index;
+                    
+                    activeTab.classList.remove('active');
+                    tab.classList.add('active');
+                    
+                    const movingRight = newIndex > activeIndex;
+                    
+                    if (movingRight) {
+                        container.classList.add('switching-out-left');
+                    } else {
+                        container.classList.add('switching-out-right');
+                    }
+                    
+                    setTimeout(() => {
+                        const filterCategory = tab.innerText.trim();
+                        const currentSearch = searchInput.value.toLowerCase();
+                        const cards = container.querySelectorAll('.module-card');
+                        
+                        cards.forEach(card => {
+                            const cardCategory = card.dataset.category;
+                            const matchesSearch = card.dataset.name.includes(currentSearch);
+                            const matchesTab = (filterCategory === 'ALL') || (cardCategory === filterCategory);
+                            
+                            if (matchesTab && matchesSearch) {
+                                card.classList.remove('hidden');
+                            } else {
+                                card.classList.add('hidden');
+                            }
+                        });
+                        
+                        container.style.transition = 'none';
+                        container.classList.remove('switching-out-left', 'switching-out-right');
+                        
+                        if (movingRight) {
+                            container.classList.add('switching-in-right');
+                        } else {
+                            container.classList.add('switching-in-left');
+                        }
+                        
+                        void container.offsetWidth;
+                        
+                        container.style.transition = '';
+                        container.classList.remove('switching-in-right', 'switching-in-left');
+                        
+                    }, 200);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -42,3 +42,11 @@ monitor.js
 /Release/
 .env
 monitor.js
+
+# Custom Ignores
+Issues/
+Release/
+.env
+monitor.js
+check_build.sh
+logs/

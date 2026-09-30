@@ -1,204 +1,234 @@
 package com.ryzix.client.gui;
 
 import com.ryzix.client.modules.OreESP;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
 public class OreESPScreen extends Screen {
 
-    private static final int ACCENT    = 0xFFFD1523;
-    private static final int BG        = 0xFF0A0A0A;
-    private static final int PANEL     = 0xFF111111;
-    private static final int PANEL_HOV = 0xFF1C1C1C;
-    private static final int DIVIDER   = 0xFF1E1E1E;
-    private static final int WHITE     = 0xFFFFFFFF;
-    private static final int GREY      = 0xFF888888;
-
-    private final Screen parent;
-    private long openTime;
-
-    private int panelW = 260;
-    private int panelH = 0;
-    private int panelX, panelY;
-    private static final int ROW_H = 50;
-    private static final int HEADER_H = 44;
-    private static final int MASTER_H = 44; // Master toggle row height
-    private static final int FOOTER_H = 24;
-
-    // Ore definitions
-    private static final OreEntry[] ORES = {
-        new OreEntry("Iron Ore",    "Shows iron ore blocks",    0xFFAAAAAA, () -> OreESP.showIron,    v -> OreESP.showIron = v),
-        new OreEntry("Gold Ore",    "Shows gold ore blocks",    0xFFFFDD00, () -> OreESP.showGold,    v -> OreESP.showGold = v),
-        new OreEntry("Lapis Ore",   "Shows lapis lazuli ore",   0xFF2255CC, () -> OreESP.showLapis,   v -> OreESP.showLapis = v),
-        new OreEntry("Diamond Ore", "Shows diamond ore blocks", 0xFF00DDDD, () -> OreESP.showDiamond, v -> OreESP.showDiamond = v),
-    };
-
-    // Hovered row: -1 = none, -2 = master toggle, 0..3 = ores
-    private int hoveredIdx = -1;
-    private float masterAnim = 0f;
-    private final float[] pillAnim = new float[ORES.length];
+    private static final int SLIDE_MS = 200;
 
     private interface BoolGetter { boolean get(); }
     private interface BoolSetter { void set(boolean v); }
 
     private static class OreEntry {
         final String name;
-        final String desc;
         final int color;
         final BoolGetter getter;
         final BoolSetter setter;
-        OreEntry(String name, String desc, int color, BoolGetter getter, BoolSetter setter) {
-            this.name = name; this.desc = desc; this.color = color;
-            this.getter = getter; this.setter = setter;
+        float anim;
+        OreEntry(String name, int color, BoolGetter getter, BoolSetter setter) {
+            this.name = name; this.color = color; this.getter = getter; this.setter = setter;
+            this.anim = getter.get() ? 1f : 0f;
         }
     }
+
+    private final OreEntry[] ores = {
+        new OreEntry("Diamond Ore",  0xFF00E5FF, () -> OreESP.showDiamond, v -> OreESP.showDiamond = v),
+        new OreEntry("Gold Ore",     0xFFFFD700, () -> OreESP.showGold,    v -> OreESP.showGold = v),
+        new OreEntry("Iron Ore",     0xFFD8AF93, () -> OreESP.showIron,    v -> OreESP.showIron = v),
+        new OreEntry("Lapis Lazuli", 0xFF345BEB, () -> OreESP.showLapis,   v -> OreESP.showLapis = v),
+    };
+
+    private final Screen parent;
+    private float masterAnim = OreESP.isEnabled() ? 1f : 0f;
+    private long lastFrame = Util.getMeasuringTimeMs();
+
+    // slide animation: enters from the right, leaves to the right
+    private final long enterStart = Util.getMeasuringTimeMs();
+    private boolean leaving = false;
+    private long leaveStart = 0;
+    private boolean leaveDone = false;
+
+    private int px, py, pw, ph, padX, padY;
+    private int scroll = 0, maxScroll = 0;
 
     public OreESPScreen(Screen parent) {
         super(Text.literal("OreESP"));
         this.parent = parent;
     }
 
+    // ------------------------------------------------------------ layout
+
     @Override
     protected void init() {
-        openTime = Util.getMeasuringTimeMs();
-        panelH = HEADER_H + MASTER_H + ORES.length * ROW_H + FOOTER_H;
-        panelX = (this.width - panelW) / 2;
-        panelY = (this.height - panelH) / 2;
-        masterAnim = OreESP.isEnabled() ? 1f : 0f;
-        for (int i = 0; i < ORES.length; i++) {
-            pillAnim[i] = ORES[i].getter.get() ? 1f : 0f;
-        }
+        pw = Ui.panelW(this.width);
+        ph = Ui.panelH(this.height);
+        px = (this.width - pw) / 2;
+        py = (this.height - ph) / 2;
+        padX = Ui.u(20);
+        padY = Ui.u(15);
     }
 
-    private void drawText(DrawContext m, String t, int x, int y, int color) {
-        m.drawText(this.textRenderer, t, x, y, color, true);
+    private int titleH()   { return Ui.u(24); }
+    private int masterY()  { return py + padY + titleH() + Ui.u(20); }
+    private int masterH()  { return Ui.u(52); }
+    private int listY()    { return masterY() + masterH() + Ui.u(20); }
+    private int listH()    { return py + ph - padY - listY(); }
+    private int rowH()     { return Ui.u(40); }
+    private int rowGap()   { return Ui.u(8); }
+    private int rowW()     { return pw - padX * 2 - Ui.u(5); }
+
+    private int backX()    { return px + padX; }
+    private int backSz()   { return Ui.u(18); }
+    private int backY()    { return py + padY + (titleH() - backSz()) / 2; }
+
+    private void updateScroll() {
+        int content = ores.length * (rowH() + rowGap()) - rowGap();
+        maxScroll = Math.max(0, content - listH());
+        scroll = Math.max(0, Math.min(maxScroll, scroll));
     }
 
-    private void drawTextCenter(DrawContext m, String t, int cx, int y, int color) {
-        int w = this.textRenderer.getWidth(t);
-        m.drawText(this.textRenderer, t, cx - w / 2, y, color, true);
-    }
+    // ------------------------------------------------------------ render
 
     @Override
-    public void render(DrawContext matrices, int mouseX, int mouseY, float delta) {
-        matrices.fill(0, 0, this.width, this.height, 0x60000000);
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        long now = Util.getMeasuringTimeMs();
+        float dt = Math.min(100f, now - lastFrame);
+        lastFrame = now;
+        int slide = Ui.u(20);
 
-        // Main panel
-        matrices.fill(panelX, panelY, panelX + panelW, panelY + panelH, BG);
-
-        // Header
-        matrices.fill(panelX, panelY, panelX + panelW, panelY + 3, ACCENT);
-        matrices.fill(panelX, panelY + 3, panelX + panelW, panelY + HEADER_H, PANEL);
-
-        // Back arrow
-        matrices.fill(panelX + 10, panelY + 13, panelX + 28, panelY + 31, ACCENT);
-        drawTextCenter(matrices, "<", panelX + 19, panelY + 18, WHITE);
-
-        drawText(matrices, "OreESP Settings", panelX + 36, panelY + 14, WHITE);
-        drawText(matrices, "Press Z to quick toggle", panelX + 36, panelY + 25, GREY);
-
-        matrices.fill(panelX, panelY + HEADER_H, panelX + panelW, panelY + HEADER_H + 1, DIVIDER);
-
-        hoveredIdx = -1;
-
-        // ── MASTER TOGGLE ROW ────────────────────────────────────────
-        int masterY = panelY + HEADER_H + 1;
-        boolean masterOn = OreESP.isEnabled();
-        boolean masterHov = mouseX >= panelX && mouseX <= panelX + panelW
-                         && mouseY >= masterY && mouseY < masterY + MASTER_H;
-        if (masterHov) hoveredIdx = -2;
-
-        matrices.fill(panelX, masterY, panelX + panelW, masterY + MASTER_H, masterHov ? PANEL_HOV : PANEL);
-
-        // Master left accent bar
-        float masterTarget = masterOn ? 1f : 0f;
-        masterAnim += (masterTarget - masterAnim) * Math.min(1f, delta * 0.2f);
-        if (masterAnim > 0.01f) {
-            int sh = (int)(MASTER_H * masterAnim);
-            matrices.fill(panelX, masterY + (MASTER_H - sh), panelX + 3, masterY + MASTER_H, ACCENT);
-        }
-
-        int mcy = masterY + MASTER_H / 2;
-        matrices.fill(panelX + 14, mcy - 11, panelX + 36, mcy + 11, masterOn ? ACCENT : 0xFF222222);
-        drawTextCenter(matrices, "O", panelX + 25, mcy - 4, WHITE);
-
-        drawText(matrices, "OreESP", panelX + 46, mcy - 9, WHITE);
-        drawText(matrices, masterOn ? "Enabled" : "Disabled", panelX + 46, mcy + 3, masterOn ? ACCENT : GREY);
-
-        // Master toggle pill
-        int mpX = panelX + panelW - 50;
-        int mpY = mcy - 7;
-        matrices.fill(mpX, mpY, mpX + 32, mpY + 14, masterOn ? ACCENT : 0xFF333333);
-        int mdotX = (int)(mpX + 2 + 18 * masterAnim);
-        matrices.fill(mdotX, mpY + 2, mdotX + 10, mpY + 10, WHITE);
-
-        matrices.fill(panelX + 10, masterY + MASTER_H - 1, panelX + panelW - 10, masterY + MASTER_H, DIVIDER);
-
-        // ── INDIVIDUAL ORE ROWS ──────────────────────────────────────
-        int rowY = masterY + MASTER_H;
-
-        for (int i = 0; i < ORES.length; i++) {
-            OreEntry ore = ORES[i];
-            boolean on = ore.getter.get();
-            boolean hov = mouseX >= panelX && mouseX <= panelX + panelW
-                       && mouseY >= rowY && mouseY < rowY + ROW_H;
-            if (hov) hoveredIdx = i;
-
-            matrices.fill(panelX, rowY, panelX + panelW, rowY + ROW_H, hov ? PANEL_HOV : BG);
-
-            // Left accent bar
-            float target = on ? 1f : 0f;
-            pillAnim[i] += (target - pillAnim[i]) * Math.min(1f, delta * 0.2f);
-            if (pillAnim[i] > 0.01f) {
-                int sh = (int)(ROW_H * pillAnim[i]);
-                matrices.fill(panelX, rowY + (ROW_H - sh), panelX + 3, rowY + ROW_H, ACCENT);
+        float va = 1f;
+        int vx = 0;
+        boolean animating = false;
+        if (leaving) {
+            float t = Ui.ease((now - leaveStart) / (float) SLIDE_MS);
+            va = 1f - t;
+            vx = Math.round(slide * t);
+            animating = true;
+            if (now - leaveStart >= SLIDE_MS) leaveDone = true;
+        } else {
+            float t = (now - enterStart) / (float) SLIDE_MS;
+            if (t < 1f) {
+                float e = Ui.ease(t);
+                va = e;
+                vx = Math.round(slide * (1f - e));
+                animating = true;
             }
+        }
+        boolean canHover = !animating;
 
-            int centerY = rowY + ROW_H / 2;
+        ctx.fill(0, 0, this.width, this.height, 0x4D000000);
+        Ui.window(ctx, px, py, pw, ph);
 
-            // Ore color square
-            matrices.fill(panelX + 14, centerY - 10, panelX + 34, centerY + 10, on ? ore.color : 0xFF333333);
+        ctx.enableScissor(px, py, px + pw, py + ph);
+        updateScroll();
+        drawTitle(ctx, mouseX, mouseY, canHover, va, vx);
+        drawMaster(ctx, dt, va, vx);
+        drawList(ctx, mouseX, mouseY, canHover, dt, va, vx);
+        ctx.disableScissor();
 
-            drawText(matrices, ore.name, panelX + 44, centerY - 9, WHITE);
-            drawText(matrices, ore.desc, panelX + 44, centerY + 3, GREY);
+        if (leaveDone) {
+            leaveDone = false;
+            if (this.client != null) {
+                this.client.setScreen(parent);
+                if (parent instanceof ModMenuScreen) ((ModMenuScreen) parent).slideIn(-1);
+            }
+        }
+    }
 
-            // Toggle pill
-            int pillX = panelX + panelW - 50;
-            int pillY = centerY - 7;
-            matrices.fill(pillX, pillY, pillX + 32, pillY + 14, on ? ACCENT : 0xFF333333);
-            int dotX = (int)(pillX + 2 + 18 * pillAnim[i]);
-            matrices.fill(dotX, pillY + 2, dotX + 10, pillY + 10, WHITE);
+    private void drawTitle(DrawContext ctx, int mx, int my, boolean canHover, float va, int vx) {
+        int bs = backSz();
+        boolean hov = canHover && Ui.in(mx, my, backX() - Ui.u(5), backY() - Ui.u(5), bs + Ui.u(10), bs + Ui.u(10));
+        Ui.icon(ctx, "arrow-left", backX() + vx, backY(), bs, (hov ? 1f : 0.55f) * va);
 
-            matrices.fill(panelX + 10, rowY + ROW_H - 1, panelX + panelW - 10, rowY + ROW_H, DIVIDER);
-            rowY += ROW_H;
+        int cy = py + padY + titleH() / 2;
+        int tx = backX() + bs + Ui.u(5) + Ui.u(15) + vx;
+        Ui.icon(ctx, "gem", tx, cy - bs / 2, bs, 0.55f * va);
+        Ui.text(ctx, this.textRenderer, "OreESP", tx + bs + Ui.u(10), cy, 20, Ui.alpha(Ui.TEXT, va));
+    }
+
+    private void drawMaster(DrawContext ctx, float dt, float va, int vx) {
+        float target = OreESP.isEnabled() ? 1f : 0f;
+        float step = dt / 300f;
+        masterAnim += Math.max(-step, Math.min(step, target - masterAnim));
+
+        int x = px + padX + vx;
+        int y = masterY();
+        int w = pw - padX * 2;
+        int h = masterH();
+        Ui.rrect(ctx, x, y, w, h, Ui.u(6), Ui.alpha(Ui.ROW_SOFT, va));
+        int cy = y + h / 2;
+        Ui.text(ctx, this.textRenderer, "Enable Module", x + Ui.u(20), cy, 15, Ui.alpha(Ui.TEXT, va));
+        Ui.toggle(ctx, x + w - Ui.u(20) - Ui.TOGGLE_W, cy - Ui.TOGGLE_H / 2, masterAnim, va);
+    }
+
+    private void drawList(DrawContext ctx, int mx, int my, boolean canHover, float dt, float va, int vx) {
+        int lx = px + padX;
+        int ly = listY();
+        int lh = listH();
+        ctx.enableScissor(Math.max(px, lx + vx), ly, Math.min(px + pw, lx + rowW() + Ui.u(5) + vx), ly + lh);
+
+        int rw = rowW();
+        for (int i = 0; i < ores.length; i++) {
+            OreEntry o = ores[i];
+            float target = o.getter.get() ? 1f : 0f;
+            float step = dt / 300f;
+            o.anim += Math.max(-step, Math.min(step, target - o.anim));
+
+            int y = ly + i * (rowH() + rowGap()) - scroll;
+            if (y + rowH() < ly || y > ly + lh) continue;
+            int x = lx + vx;
+
+            Ui.rrect(ctx, x, y, rw, rowH(), Ui.u(4), Ui.alpha(Ui.CARD, va));
+            int cy = y + rowH() / 2;
+
+            // colour dot with glow
+            int dot = Ui.u(12);
+            int dx = x + Ui.u(18);
+            Ui.rrect(ctx, dx - 1, cy - dot / 2 - 1, dot + 2, dot + 2, dot / 2 + 1, Ui.alpha((o.color & 0xFFFFFF) | 0x33000000, va));
+            Ui.rrect(ctx, dx, cy - dot / 2, dot, dot, dot / 2, Ui.alpha(o.color, va));
+
+            Ui.text(ctx, this.textRenderer, o.name, dx + dot + Ui.u(10), cy, 13, Ui.alpha(Ui.TEXT, va));
+            Ui.toggle(ctx, x + rw - Ui.u(18) - Ui.TOGGLE_W, cy - Ui.TOGGLE_H / 2, o.anim, va);
         }
 
-        // Footer
-        matrices.fill(panelX, panelY + panelH - FOOTER_H, panelX + panelW, panelY + panelH, PANEL);
-        drawTextCenter(matrices, "Press ESC to go back", panelX + panelW / 2, panelY + panelH - 15, GREY);
+        if (maxScroll > 0) {
+            int content = ores.length * (rowH() + rowGap()) - rowGap();
+            int thumbH = Math.max(Ui.u(30), lh * lh / content);
+            int thumbY = ly + (int) ((lh - thumbH) * (scroll / (float) maxScroll));
+            Ui.rrect(ctx, lx + rw + Ui.u(5) - Ui.u(4) + vx, thumbY, Ui.u(4), thumbH, Ui.u(2), Ui.alpha(0x1AFFFFFF, va));
+        }
+        ctx.disableScissor();
+    }
 
+    // ------------------------------------------------------------ input
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double amount) {
+        if (maxScroll > 0) {
+            scroll = Math.max(0, Math.min(maxScroll, scroll - (int) (amount * 12)));
+            return true;
+        }
+        return false;
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
+        if (leaving || Util.getMeasuringTimeMs() - enterStart < SLIDE_MS) return true;
         if (btn == 0) {
-            // Back arrow
-            if (mx >= panelX + 10 && mx <= panelX + 28 && my >= panelY + 13 && my <= panelY + 31) {
+            int bs = backSz();
+            if (Ui.in(mx, my, backX() - Ui.u(5), backY() - Ui.u(5), bs + Ui.u(10), bs + Ui.u(10))) {
                 this.close();
                 return true;
             }
-            // Master toggle
-            if (hoveredIdx == -2) {
+            // master toggle row
+            if (Ui.in(mx, my, px + padX, masterY(), pw - padX * 2, masterH())) {
                 OreESP.toggle();
                 return true;
             }
-            // Individual ore toggle
-            if (hoveredIdx >= 0) {
-                OreEntry ore = ORES[hoveredIdx];
-                ore.setter.set(!ore.getter.get());
-                return true;
+            // ore rows (only inside the visible list area)
+            if (Ui.in(mx, my, px + padX, listY(), rowW(), listH())) {
+                for (int i = 0; i < ores.length; i++) {
+                    int y = listY() + i * (rowH() + rowGap()) - scroll;
+                    if (Ui.in(mx, my, px + padX, y, rowW(), rowH())) {
+                        OreEntry o = ores[i];
+                        o.setter.set(!o.getter.get());
+                        return true;
+                    }
+                }
             }
         }
         return super.mouseClicked(mx, my, btn);
@@ -213,11 +243,12 @@ public class OreESPScreen extends Screen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
+    /** Slides out to the right, then returns to the main menu (which slides in from the left). */
     @Override
     public void close() {
-        if (this.client != null) {
-            this.client.setScreen(parent);
-        }
+        if (leaving) return;
+        leaving = true;
+        leaveStart = Util.getMeasuringTimeMs();
     }
 
     @Override

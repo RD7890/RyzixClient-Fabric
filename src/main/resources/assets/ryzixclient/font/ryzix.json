@@ -1,0 +1,11 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "ryzixclient:RyzixFont.otf",
+      "shift": [0.0, 0.0],
+      "size": 10.0,
+      "oversample": 8.0
+    }
+  ]
+}
